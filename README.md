@@ -21,3 +21,6 @@
 4. Extras
 
  ## To be developed...
+
+ ### Donations:
+As it is pretty much impossible to make money off open source software. If you want to keep me motivated with this project, be generous and leave a few cents at own will. 
