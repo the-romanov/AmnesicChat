@@ -7,10 +7,13 @@ A Java application with a big focus on privacy & security.
 
 ### Index:
 
-1 - Idea
-2 - How to use
-3 - Compiling the source code
-4 - Extras
+1 -> Idea
+
+2 -> How to use
+
+3 -> Compiling the source code
+
+4 -> Extras
 
 1. Idea
 
