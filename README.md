@@ -15,6 +15,8 @@ A Java application with a big focus on privacy & security.
 
 4 -> Extras
 
+<-->
+
 1. Idea
 
 AmnesicChat aims to create a secure, privacy-focused communication platform using advanced encryption and decentralization.
