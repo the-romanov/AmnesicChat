@@ -9,6 +9,8 @@
 plugins {
     // Apply the java-library plugin for API and implementation separation.
     id 'java-library'
+    id 'application'
+    id 'java'
 }
 
 repositories {
@@ -31,3 +33,9 @@ tasks.named('test') {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
 }
+
+application 
+    // Specify the fully-qualified name of your main class
+    mainClass = "com.Amnesic.Library"
+
+
