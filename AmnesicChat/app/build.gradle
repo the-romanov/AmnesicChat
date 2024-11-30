@@ -27,12 +27,12 @@ dependencies {
 
 application {
     // Define the main class for the application.
-    mainClass = "amnesicchat.App"
+    mainClass = "App"
 }
 jar {
     manifest {
         attributes(
-            'Main-Class': "amnesicchat.App"
+            'Main-Class': "App"
         )
     }
 }
