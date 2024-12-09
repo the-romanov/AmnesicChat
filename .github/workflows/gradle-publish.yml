@@ -49,5 +49,5 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: java-build
-          path: AmnesicChat/build/libs/*.jar
+          path: AmnesicChat/AmnesicChat/app/build/libs/*.jar
 
