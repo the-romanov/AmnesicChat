@@ -43,9 +43,11 @@ jobs:
       # Step 5: Run the Gradle build
       - name: Build with Gradle
         run: gradle -p AmnesicChat clean build
-        
-        - name: Upload Build Artifacts
-  	  uses: actions/upload-artifact@v3
-  	  with:
-    	    name: java-build
-    	    path: build/libs/*.jar
+
+      # Step 6: Upload Build Artifacts
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: java-build
+          path: AmnesicChat/build/libs/*.jar
+
