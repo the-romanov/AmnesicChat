@@ -47,5 +47,5 @@ jobs:
         - name: Upload Build Artifacts
   	uses: actions/upload-artifact@v3
   	with:
-    	name: java-build
-    	path: build/libs/*.jar
+    	  name: java-build
+    	  path: build/libs/*.jar
