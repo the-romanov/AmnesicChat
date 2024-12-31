@@ -1,7 +1,6 @@
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.event.*;
 import java.io.IOException;
 import javax.imageio.ImageIO;
 import java.net.URL;
@@ -10,11 +9,124 @@ import java.awt.event.MouseEvent;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 
-public class App {
 
-	public static void main(String[] args) {
-        // Initialize the frame
-        JFrame frame = new JFrame("Main Menu");
+public class App {
+	
+	private JFrame frame; //JFrame is private so that we can isolate the variable to prevent potential tampering.
+	
+	public App() {
+		frame = new JFrame("AmnesicChat");
+	}
+	
+	public JFrame getJFrame() {
+		return frame;
+	}
+	
+	public void createAccount(JFrame frame) {
+	    frame.setTitle("AmnesicChat - Create Account");
+	    frame.setSize(650, 500);
+
+	    // Clear existing content
+	    frame.getContentPane().removeAll();
+
+	    // Create a panel for creating account (merged code logic)
+	    JPanel createAccountPanel = new JPanel();
+	    createAccountPanel.setLayout(new BoxLayout(createAccountPanel, BoxLayout.Y_AXIS));
+	    createAccountPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20)); // Add padding
+
+	    // Header label
+	    JLabel headerLabel = new JLabel("Create Device Lock", SwingConstants.CENTER);
+	    headerLabel.setFont(new Font("SansSerif", Font.BOLD, 20));
+	    headerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+	    createAccountPanel.add(headerLabel);
+
+	    createAccountPanel.add(Box.createVerticalStrut(10)); // Add spacing
+
+	    // Instruction label
+	    JLabel instructionLabel = new JLabel(
+	            "<html>Choose which storage devices you want to use as verification.<br>"
+	                    + "The storage devices selected are required to unlock your account.<br>"
+	                    + "It is not recommended to use your USB as the only device lock.</html>",
+	            SwingConstants.CENTER);
+	    instructionLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+	    instructionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+	    createAccountPanel.add(instructionLabel);
+
+	    createAccountPanel.add(Box.createVerticalStrut(10));
+
+	    // Strict mode panel
+	    JPanel strictModePanel = new JPanel();
+	    strictModePanel.setLayout(new BoxLayout(strictModePanel, BoxLayout.X_AXIS));
+	    strictModePanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+	    JLabel strictModeLabel = new JLabel("Strict Mode: ");
+	    strictModeLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+	    strictModePanel.add(strictModeLabel);
+
+	    JRadioButton yesButton = new JRadioButton("YES");
+	    JRadioButton noButton = new JRadioButton("NO", true); // Default to "NO"
+	    ButtonGroup strictModeGroup = new ButtonGroup();
+	    strictModeGroup.add(yesButton);
+	    strictModeGroup.add(noButton);
+
+	    // Add tooltips on hover to explain what strict mode does
+	    yesButton.setToolTipText("Enables Strict Mode, which locks your account to specific devices. If the devices are lost or damaged, the account cannot be recovered.");
+	    noButton.setToolTipText("Disables Strict Mode. This allows recovery of your account if you lose access to the specific devices.");
+
+	    strictModePanel.add(yesButton);
+	    strictModePanel.add(Box.createHorizontalStrut(10)); // Add spacing
+	    strictModePanel.add(noButton);
+	    createAccountPanel.add(strictModePanel);
+
+	    // Warning message
+	    JLabel warningLabel = new JLabel(
+	            "<html><i>STRICT MODE IS NOT RECOMMENDED.<br>"
+	                    + "IF THE DEVICE(S) YOU ASSIGN GET DAMAGED OR LOST,<br>"
+	                    + "THE ACCOUNT WILL NEVER BE RECOVERED EVER.</i></html>",
+	            SwingConstants.CENTER);
+	    warningLabel.setFont(new Font("SansSerif", Font.ITALIC, 12));
+	    warningLabel.setForeground(Color.RED);
+	    warningLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+	    createAccountPanel.add(Box.createVerticalStrut(10)); // Add spacing
+	    createAccountPanel.add(warningLabel);
+
+	    createAccountPanel.add(Box.createVerticalStrut(20)); // Add spacing
+
+	    // Device dropdowns
+	    JPanel devicePanel = new JPanel();
+	    devicePanel.setLayout(new GridLayout(4, 1, 10, 10));
+
+	    for (int i = 1; i <= 4; i++) {
+	        JComboBox<String> deviceDropdown = new JComboBox<>(
+	                new String[]{"Device" + i + " - DeviceName" + i, "Device" + i + " - Option2", "Device" + i + " - Option3"});
+	        devicePanel.add(deviceDropdown);
+	    }
+	    createAccountPanel.add(devicePanel);
+
+	    createAccountPanel.add(Box.createVerticalStrut(20)); // Add spacing
+
+	    // Continue button
+	    JButton continueButton = new JButton("Continue");
+	    continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+	    continueButton.addActionListener(new ActionListener() {
+	        @Override
+	        public void actionPerformed(ActionEvent e) {
+	            JOptionPane.showMessageDialog(frame, "Device Lock settings saved!");
+	        }
+	    });
+	    createAccountPanel.add(continueButton);
+
+	    // Add this panel to the frame
+	    frame.getContentPane().add(createAccountPanel, BorderLayout.CENTER);
+
+	    // Refresh the frame
+	    frame.revalidate();
+	    frame.repaint();
+	}
+
+	
+	public void mainMenu(JFrame frame) {
+		// Initialise the frame
         frame.setTitle("AmnesicChat - Account");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(650, 400);
@@ -114,7 +226,7 @@ public class App {
         createAccountButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                JOptionPane.showMessageDialog(frame, "Creating a new account!");
+                createAccount(frame);
             }
         });
         mainPanel.add(createAccountButton);
@@ -122,4 +234,13 @@ public class App {
         // Set frame visible. We must set this otherwise our UI will be hidden.
         frame.setVisible(true);
     }
+	
+
+	public static void main(String[] args) {
+		App app = new App();
+		
+		JFrame frame = app.getJFrame();
+		
+		app.mainMenu(frame);
 }
+	}
