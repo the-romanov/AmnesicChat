@@ -16,13 +16,19 @@ plugins {
 
 repositories {
     // Use Maven Central for resolving dependencies.
-    mavenCentral()
+    mavenCentral() {
+    	metadataSources {
+    		mavenPom()
+    		artifact()
+    }
+}
 }
 
 dependencies {
     // This dependency is used by the application.
     implementation("com.google.guava:guava:31.1-jre")
     implementation('org.junit.jupiter:junit-jupiter:5.9.1')
+    implementation("com.github.oshi:oshi-core:6.2.2")
 }
 
 application {
