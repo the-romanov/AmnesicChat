@@ -17,7 +17,10 @@ import java.util.ArrayList;
 public class App {
 
     private JFrame frame; //JFrame is private so that we can isolate the variable to prevent potential tampering.
-
+    private boolean useHardwareInfoMode = true; // Flag to switch between modes
+    public int baseWidth = 650;
+    public int baseHeight = 350;	
+    
     public App() {
         frame = new JFrame("AmnesicChat");
     }
@@ -26,25 +29,75 @@ public class App {
         return frame;
     }
 
-    public List<String> getAvailableStorageDevices() {
-        // Create an instance to access hardware information
-        SystemInfo systemInfo = new SystemInfo();
-        
-        // Get the list of disk stores (storage devices)
-        List<HWDiskStore> diskStores = systemInfo.getHardware().getDiskStores();
+    	public List<String> getAvailableStorageDevices() {
+    	    List<String> devices = new ArrayList<>();
 
-        // List to hold device names
-        List<String> availableDevices = new ArrayList<>();
+    	    if (useHardwareInfoMode) {
+    	        // Use hardware information (SystemInfo) to get devices
+    	        SystemInfo systemInfo = new SystemInfo();
+    	        List<HWDiskStore> diskStores = systemInfo.getHardware().getDiskStores();
 
-        // Loop through each disk store and add the device name to the list
-        for (HWDiskStore diskStore : diskStores) {
-            availableDevices.add(diskStore.getName());
-        }
+    	        for (HWDiskStore diskStore : diskStores) {
+    	            devices.add(diskStore.getName());
+    	        }
+    	    } else {
+    	        // Use file system roots (drives)
+    	        File[] roots = File.listRoots();
+    	        for (File root : roots) {
+    	            devices.add(root.getAbsolutePath());
+    	        }
+    	    }
+    	    return devices;
+    	}
+    	
+    	public void frameUpdate(JFrame frame, int aD) {
+    		int aH = 0;
+            if (aD != 0) {
+                aH = aD * 50;
+            }
 
-        return availableDevices;
-    }
+            // Set the dynamic size
+            frame.setSize(650, 350 + aH);
+    	}
 
-    public void createAccount(JFrame frame) {
+    	private void updateDeviceList(JPanel createAccountPanel) {
+    	    // Get the available storage devices based on the mode selected
+    	    List<String> availableDevices = getAvailableStorageDevices();
+
+    	    // Find the devicePanel in the createAccountPanel and update it
+    	    JPanel devicePanel = null;
+    	    Component[] components = createAccountPanel.getComponents();
+    	    
+    	    // Look for the existing device panel
+    	    for (Component component : components) {
+    	        if (component instanceof JPanel && ((JPanel) component).getLayout() instanceof GridLayout) {
+    	            devicePanel = (JPanel) component;
+    	            break; // Found the existing device panel
+    	        }
+    	    }
+
+    	    // If no devicePanel found, create a new one
+    	    if (devicePanel == null) {
+    	        devicePanel = new JPanel();
+    	        devicePanel.setLayout(new GridLayout(0, 1, 10, 10)); // Use a grid layout
+    	        createAccountPanel.add(devicePanel);
+    	    } else {
+    	        devicePanel.removeAll();  // Clear previous buttons
+    	    }
+
+    	    // Create toggle buttons for the available devices
+    	    for (String device : availableDevices) {
+    	        JToggleButton deviceToggleButton = new JToggleButton(device);
+    	        deviceToggleButton.setToolTipText("Click to select " + device);
+    	        devicePanel.add(deviceToggleButton);  // Add the toggle button
+    	    }
+
+    	    // Refresh the devicePanel
+    	    createAccountPanel.revalidate();
+    	    createAccountPanel.repaint();
+    	}
+    	
+    	public void createAccount(JFrame frame) {
     	// Ensure this method runs on EDT (Event Dispatch Thread for stability of program)
         SwingUtilities.invokeLater(new Runnable() {
             @Override
@@ -52,18 +105,11 @@ public class App {
         frame.setTitle("AmnesicChat - Create Account");
 
         // Base size for the window to equally show storage devices.
-        int baseWidth = 650;
-        int baseHeight = 300;
         List<String> availableDevices = getAvailableStorageDevices();
+        int aD = availableDevices.size();
 
         // Calculate additional height based on the number of devices for height optimisation.
-        int additionalHeight = 0;
-        if (!availableDevices.isEmpty()) {
-            additionalHeight = availableDevices.size() * 50;
-        }
-
-        // Set the dynamic size
-        frame.setSize(baseWidth, baseHeight + additionalHeight);
+        frameUpdate(frame, aD);
 
         frame.getContentPane().removeAll();
 
@@ -148,7 +194,6 @@ public class App {
         }
 
         createAccountPanel.add(devicePanel);
-
         createAccountPanel.add(Box.createVerticalStrut(20)); // Add spacing
 
         // Continue button
@@ -174,9 +219,44 @@ public class App {
         });
         createAccountPanel.add(backButton);
 
+        JPanel modeSelectionPanel = new JPanel();
+        modeSelectionPanel.setLayout(new BoxLayout(modeSelectionPanel, BoxLayout.X_AXIS));
+
+        JLabel modeLabel = new JLabel("Choose Device Source: ");
+        modeLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        modeSelectionPanel.add(modeLabel);
+
+        // Radio buttons for mode selection
+        JRadioButton hardwareRadioButton = new JRadioButton("Hardware Info", true);
+        JRadioButton fileSystemRadioButton = new JRadioButton("File System Roots");
+
+        ButtonGroup modeGroup = new ButtonGroup();
+        modeGroup.add(hardwareRadioButton);
+        modeGroup.add(fileSystemRadioButton);
+
+        
+        // Action listeners for each radio button to switch modes
+        hardwareRadioButton.addActionListener(e -> {
+            useHardwareInfoMode = true;
+            updateDeviceList(createAccountPanel);
+            frameUpdate(frame, aD);
+        });
+
+        fileSystemRadioButton.addActionListener(e -> {
+            useHardwareInfoMode = false;
+            updateDeviceList(createAccountPanel);
+            frameUpdate(frame, aD);
+        });
+
+        // Add the radio buttons to the mode selection panel
+        modeSelectionPanel.add(hardwareRadioButton);
+        modeSelectionPanel.add(fileSystemRadioButton);
+        createAccountPanel.add(Box.createVerticalStrut(20)); // Add spacing
+        createAccountPanel.add(modeSelectionPanel);
+        
         // Add this panel and contents to the frame
         frame.getContentPane().add(createAccountPanel, BorderLayout.CENTER);
-
+       
         // Refresh the frame
         frame.revalidate();
         frame.repaint();
@@ -204,10 +284,16 @@ public class App {
 
                 // Set icon for the frame
                 try {
-                    ImageIcon favicon = new ImageIcon("images/Favicon.png"); // Replace with actual file path
-                    frame.setIconImage(favicon.getImage());
+                    // Load the favicon image from the resources folder
+                    URL faviconURL = getClass().getResource("/images/Favicon.png");
+                    if (faviconURL != null) {
+                        ImageIcon favicon = new ImageIcon(faviconURL);
+                        frame.setIconImage(favicon.getImage());
+                    } else {
+                        System.out.println("Favicon not found");
+                    }
                 } catch (Exception e) {
-                    System.out.println("Favicon not found");
+                    System.out.println("Error loading favicon: " + e.getMessage());
                 }
 
                 // Main panel setup
@@ -218,7 +304,7 @@ public class App {
 
                 // Banner setup
                 JLabel imageLabel = new JLabel();
-                URL imageURL = App.class.getResource("/images/AmnesicLabel.png");
+                URL imageURL = getClass().getResource("/images/AmnesicLabel.png");
                 if (imageURL != null) {
                     ImageIcon originalIcon = new ImageIcon(imageURL);
                     imageLabel.setIcon(originalIcon);
@@ -254,36 +340,41 @@ public class App {
                 // Create the file path field
                 JTextField filePathField = new JTextField();
 
-                // Create the browse button
-                JButton browseButton = new JButton(new ImageIcon("images/File.png")); // Replace with actual file path
-                browseButton.setPreferredSize(new Dimension(50, 50)); // Set fixed dimensions for the button
+                // Create the browse button with resized image icon
+                URL fileButtonIconURL = getClass().getResource("/images/File.png");
+                if (fileButtonIconURL != null) {
+                    ImageIcon originalIcon = new ImageIcon(fileButtonIconURL);
+                    Image scaledImage = originalIcon.getImage().getScaledInstance(40, 40, Image.SCALE_SMOOTH); // Resize image to 50x50
+                    ImageIcon resizedIcon = new ImageIcon(scaledImage);
+                    
+                    JButton browseButton = new JButton(resizedIcon);
+                    browseButton.setPreferredSize(new Dimension(50, 50)); // Set fixed dimensions for the button
 
-                // Set the height of the file path field to match the browse button
-                filePathField.setMaximumSize(new Dimension(Integer.MAX_VALUE, browseButton.getPreferredSize().height));
+                    // Set the height of the file path field to match the browse button
+                    filePathField.setMaximumSize(new Dimension(Integer.MAX_VALUE, browseButton.getPreferredSize().height));
 
-                // Add components to the panel
-                fileChooserPanel.add(filePathField);
-                fileChooserPanel.add(Box.createHorizontalStrut(10)); // Add spacing
-                fileChooserPanel.add(browseButton);
+                    // Add components to the panel
+                    fileChooserPanel.add(filePathField);
+                    fileChooserPanel.add(Box.createHorizontalStrut(10)); // Add spacing
+                    fileChooserPanel.add(browseButton);
 
-                // Add action listener for browse button
-                browseButton.addActionListener(new ActionListener() {
-                    @Override
-                    public void actionPerformed(ActionEvent e) {
-                        JFileChooser fileChooser = new JFileChooser();
-                        int result = fileChooser.showOpenDialog(frame);
-                        if (result == JFileChooser.APPROVE_OPTION) {
-                            filePathField.setText(fileChooser.getSelectedFile().getAbsolutePath());
+                    // Add action listener for browse button
+                    browseButton.addActionListener(new ActionListener() {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            JFileChooser fileChooser = new JFileChooser();
+                            int result = fileChooser.showOpenDialog(frame);
+                            if (result == JFileChooser.APPROVE_OPTION) {
+                                filePathField.setText(fileChooser.getSelectedFile().getAbsolutePath());
+                            }
                         }
-                    }
-                });
+                    });
 
-                // Add the components of file choosing to the main panel.
-                fileChooserPanel.add(Box.createHorizontalStrut(10));
-                fileChooserPanel.add(browseButton);
-
-                // Display the file chooser to the user
-                mainPanel.add(fileChooserPanel);
+                    // Add the components of file choosing to the main panel
+                    mainPanel.add(fileChooserPanel);
+                } else {
+                    System.out.println("File button icon not found");
+                }
 
                 mainPanel.add(Box.createVerticalStrut(20)); // Add spacing
 
@@ -304,6 +395,7 @@ public class App {
             }
         });
     }
+
 
     public static void main(String[] args) {
     	//We run the program through EventQueue with EDT (Event Dispatch Thread) to make program stable.
