@@ -1,4 +1,7 @@
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.IOException;
@@ -6,7 +9,6 @@ import javax.imageio.ImageIO;
 import java.net.URL;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import java.io.File;
 import java.util.*;
 import oshi.SystemInfo;
@@ -275,7 +277,7 @@ public class App {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                // Initialise the frame
+                // Initialize the frame
                 frame.setTitle("AmnesicChat - Account");
                 frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                 frame.setSize(650, 400);
@@ -389,6 +391,33 @@ public class App {
                     }
                 });
                 mainPanel.add(createAccountButton);
+
+                // Listen to the text field for changes
+                filePathField.getDocument().addDocumentListener(new DocumentListener() {
+                    @Override
+                    public void insertUpdate(DocumentEvent e) {
+                        updateButtonText();
+                    }
+
+                    @Override
+                    public void removeUpdate(DocumentEvent e) {
+                        updateButtonText();
+                    }
+
+                    @Override
+                    public void changedUpdate(DocumentEvent e) {
+                        updateButtonText();
+                    }
+
+                    // Method to update the button text based on the file path field
+                    private void updateButtonText() {
+                        if (filePathField.getText().trim().isEmpty()) {
+                            createAccountButton.setText("Create Account");
+                        } else {
+                            createAccountButton.setText("Load Account");
+                        }
+                    }
+                });
 
                 // Set frame visible
                 frame.setVisible(true);
