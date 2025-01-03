@@ -1,4 +1,6 @@
 import javax.swing.*;
+import javax.swing.border.Border;
+import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -15,6 +17,10 @@ import oshi.SystemInfo;
 import oshi.hardware.HWDiskStore;
 import java.util.List;
 import java.util.ArrayList;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 
 public class App {
 
@@ -61,7 +67,7 @@ public class App {
             // Set the dynamic size
             frame.setSize(650, 350 + aH);
     	}
-
+    	
     	private void updateDeviceList(JPanel createAccountPanel) {
     	    // Get the available storage devices based on the mode selected
     	    List<String> availableDevices = getAvailableStorageDevices();
@@ -97,6 +103,281 @@ public class App {
     	    // Refresh the devicePanel
     	    createAccountPanel.revalidate();
     	    createAccountPanel.repaint();
+    	}
+    	
+    	public void createGPGIdentity(JFrame frame) {
+    	    SwingUtilities.invokeLater(() -> {
+    	        frame.setTitle("AmnesicChat - Create GPG Identity");
+    	        frame.setSize(700, 400);
+    	        frame.getContentPane().removeAll();
+    	        frame.setLayout(new BorderLayout());
+
+    	        // Main panel setup
+    	        JPanel mainPanel = new JPanel();
+    	        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+    	        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 50, 20, 50));
+    	        frame.add(mainPanel, BorderLayout.CENTER);
+
+    	        // Header
+    	        JLabel headerLabel = new JLabel("Create GPG Identity", SwingConstants.CENTER);
+    	        headerLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
+    	        headerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+    	        mainPanel.add(headerLabel);
+
+    	        mainPanel.add(Box.createVerticalStrut(10));
+
+    	        JLabel subHeaderLabel = new JLabel(
+    	                "<html>It is recommended to use a pseudo identity. Do not use your real identity unless necessary.<br>" +
+    	                "Hover over the text boxes and tooltip for more.</html>",
+    	                SwingConstants.CENTER);
+    	        subHeaderLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+    	        subHeaderLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+    	        mainPanel.add(subHeaderLabel);
+
+    	        mainPanel.add(Box.createVerticalStrut(20));
+
+    	        // Form panel
+    	        JPanel formPanel = new JPanel();
+    	        formPanel.setLayout(new GridBagLayout());
+    	        GridBagConstraints gbc = new GridBagConstraints();
+    	        gbc.insets = new Insets(10, 10, 10, 10);
+    	        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+    	        // Name field
+    	        gbc.gridx = 0;
+    	        gbc.gridy = 0;
+    	        JLabel nameLabel = new JLabel("Name:");
+    	        nameLabel.setToolTipText("Enter your preferred name. Must be at least 4 characters.");
+    	        formPanel.add(nameLabel, gbc);
+    	        gbc.gridx = 1;
+    	        JTextField nameField = new JTextField(20);
+    	        nameField.setToolTipText("Example: John Doe. Use a pseudonym for privacy.");
+    	        formPanel.add(nameField, gbc);
+
+    	        // Email field
+    	        gbc.gridx = 0;
+    	        gbc.gridy = 1;
+    	        JLabel emailLabel = new JLabel("E-mail:");
+    	        emailLabel.setToolTipText("Enter your email address for the GPG identity.");
+    	        formPanel.add(emailLabel, gbc);
+    	        gbc.gridx = 1;
+    	        JTextField emailField = new JTextField(20);
+    	        emailField.setToolTipText("Example: user@example.com");
+    	        formPanel.add(emailField, gbc);
+
+    	        // Password field
+    	        gbc.gridx = 0;
+    	        gbc.gridy = 2;
+    	        JLabel passwordLabel = new JLabel("Passphrase:");
+    	        passwordLabel.setToolTipText("Set a strong password for your GPG key. Optional but recommended.");
+    	        formPanel.add(passwordLabel, gbc);
+    	        gbc.gridx = 1;
+    	        JPasswordField passphraseField = new JPasswordField(20);
+    	        passphraseField.setToolTipText("Leave blank to skip. A strong password has 8+ characters.");
+    	        formPanel.add(passphraseField, gbc);
+
+    	        // Expiry field
+    	        gbc.gridx = 0;
+    	        gbc.gridy = 3;
+    	        JLabel expiryLabel = new JLabel("Expiry:");
+    	        expiryLabel.setToolTipText("Set the expiry date for the GPG key in the format DD-MM-YYYY.");
+    	        formPanel.add(expiryLabel, gbc);
+    	        gbc.gridx = 1;
+    	        JTextField expiryField = new JTextField(20);
+    	        expiryField.setText("DD-MM-YYYY");
+    	        expiryField.setToolTipText("Example: 31-12-2025. Expiry must be at least 90 days in the future.");
+    	        formPanel.add(expiryField, gbc);
+
+    	        // Info button
+    	        gbc.gridx = 2;
+    	        JButton infoButton = new JButton("i");
+    	        infoButton.setToolTipText("Your GPG key will expire on the specified date. You must generate a new key to continue using encryption.");
+    	        formPanel.add(infoButton, gbc);
+
+    	        mainPanel.add(formPanel);
+
+    	        // Warning panel
+    	        JPanel warningPanel = new JPanel();
+    	        warningPanel.setLayout(new BoxLayout(warningPanel, BoxLayout.Y_AXIS));
+    	        warningPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+    	        mainPanel.add(warningPanel);
+
+    	        mainPanel.add(Box.createVerticalStrut(20));
+
+    	        // Continue button
+    	        JButton continueButton = new JButton("Continue");
+    	        continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+    	        continueButton.addActionListener(e -> {
+    	            warningPanel.removeAll(); // Clear previous warnings
+    	            boolean hasErrors = false;
+    	            boolean hasWarnings = false;
+    	            StringBuilder warnings = new StringBuilder();
+
+    	            // Validate name
+    	            String name = nameField.getText().trim();
+    	            if (name.length() < 4) {
+    	                JLabel errorLabel = new JLabel("Name must have at least 4 characters.");
+    	                errorLabel.setForeground(Color.RED);
+    	                warningPanel.add(errorLabel);
+    	                hasErrors = true;
+    	            }
+
+    	            // Validate email
+    	            String email = emailField.getText().trim();
+    	            if (!email.matches(".+@.+")) {
+    	                JLabel errorLabel = new JLabel("Email must be valid (e.g., name@example.com).");
+    	                errorLabel.setForeground(Color.RED);
+    	                warningPanel.add(errorLabel);
+    	                hasErrors = true;
+    	            }
+
+    	            // Validate passphrase
+    	            char[] password = passphraseField.getPassword();
+    	            if (password.length == 0) {
+    	                warnings.append("- No password set. This is not recommended for security.\n");
+    	                hasWarnings = true;
+    	            } else if (password.length < 8) {
+    	                warnings.append("- Password is weak (less than 8 characters).\n");
+    	                hasWarnings = true;
+    	            }
+
+    	            // Validate expiry
+    	            String expiry = expiryField.getText().trim();
+    	            try {
+    	                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+    	                LocalDate expiryDate = LocalDate.parse(expiry, formatter);
+    	                LocalDate today = LocalDate.now();
+    	                long daysBetween = ChronoUnit.DAYS.between(today, expiryDate);
+
+    	                if (!expiryDate.isAfter(today)) {
+    	                    JLabel errorLabel = new JLabel("Expiry date must be in the future.");
+    	                    errorLabel.setForeground(Color.RED);
+    	                    warningPanel.add(errorLabel);
+    	                    hasErrors = true;
+    	                } else if (daysBetween < 90) {
+    	                    warnings.append("- Expiry date is less than 90 days from now.\n");
+    	                    hasWarnings = true;
+    	                }
+    	            } catch (DateTimeParseException ex) {
+    	                JLabel errorLabel = new JLabel("Expiry date must be valid and in the format DD-MM-YYYY.");
+    	                errorLabel.setForeground(Color.RED);
+    	                warningPanel.add(errorLabel);
+    	                hasErrors = true;
+    	            }
+
+    	            warningPanel.revalidate();
+    	            warningPanel.repaint();
+
+    	            // Handle results
+    	            if (hasErrors) {
+    	                JOptionPane.showMessageDialog(frame, "Please correct the highlighted errors.", "Validation Error",
+    	                        JOptionPane.ERROR_MESSAGE);
+    	            } else if (hasWarnings) {
+    	                // Show warnings popup
+    	                int choice = JOptionPane.showOptionDialog(frame,
+    	                        "Warnings:\n" + warnings.toString(),
+    	                        "Warnings",
+    	                        JOptionPane.YES_NO_OPTION,
+    	                        JOptionPane.WARNING_MESSAGE,
+    	                        null,
+    	                        new String[]{"Back", "Continue"},
+    	                        "Back");
+    	                if (choice == JOptionPane.NO_OPTION) {
+    	                    System.out.println("Continuing with warnings...");
+    	                }
+    	            } else {
+    	                JOptionPane.showMessageDialog(frame, "All fields are valid. Continuing...", "Validation Successful",
+    	                        JOptionPane.INFORMATION_MESSAGE);
+    	                System.out.println("Name: " + name);
+    	                System.out.println("Email: " + email);
+    	                System.out.println("Password: " + new String(password));
+    	                System.out.println("Expiry: " + expiry);
+    	            }
+    	        });
+    	        mainPanel.add(continueButton);
+    	    });
+    	}
+
+    	public void insertGPGIdentity(JFrame frame) {
+    	    SwingUtilities.invokeLater(() -> {
+    	        frame.getContentPane().removeAll();
+    	        frame.setTitle("AmnesicChat - GPG Identity");
+    	        frame.setSize(650, 300);
+
+    	        // Main panel setup
+    	        JPanel mainPanel = new JPanel();
+    	        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+    	        mainPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+
+    	        // Header label
+    	        JLabel headerLabel = new JLabel("Create GPG Identity", SwingConstants.CENTER);
+    	        headerLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
+    	        headerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+    	        mainPanel.add(headerLabel);
+
+    	        mainPanel.add(Box.createVerticalStrut(20)); // Add spacing
+
+    	        // Instruction label
+    	        JLabel instructionLabel = new JLabel("Would you like to import your own GPG key?");
+    	        instructionLabel.setFont(new Font("SansSerif", Font.PLAIN, 16));
+    	        instructionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+    	        mainPanel.add(instructionLabel);
+
+    	        JLabel instructionSubLabel = new JLabel(
+    	                "If yes, please locate the private key using the directory finder below.",
+    	                SwingConstants.CENTER);
+    	        instructionSubLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
+    	        instructionSubLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+    	        mainPanel.add(instructionSubLabel);
+
+    	        mainPanel.add(Box.createVerticalStrut(20)); // Add spacing
+
+    	        // File chooser panel
+    	        JPanel fileChooserPanel = new JPanel();
+    	        fileChooserPanel.setLayout(new BoxLayout(fileChooserPanel, BoxLayout.X_AXIS));
+
+    	        JTextField filePathField = new JTextField();
+    	        JButton browseButton = new JButton("...");
+    	        browseButton.setPreferredSize(new Dimension(40, 30));
+
+    	        filePathField.setMaximumSize(new Dimension(Integer.MAX_VALUE, browseButton.getPreferredSize().height));
+
+    	        fileChooserPanel.add(filePathField);
+    	        fileChooserPanel.add(Box.createHorizontalStrut(10)); // Add spacing
+    	        fileChooserPanel.add(browseButton);
+
+    	        // File chooser action listener
+    	        browseButton.addActionListener(e -> {
+    	            JFileChooser fileChooser = new JFileChooser();
+    	            int result = fileChooser.showOpenDialog(frame);
+    	            if (result == JFileChooser.APPROVE_OPTION) {
+    	                filePathField.setText(fileChooser.getSelectedFile().getAbsolutePath());
+    	            }
+    	        });
+
+    	        mainPanel.add(fileChooserPanel);
+
+    	        mainPanel.add(Box.createVerticalStrut(20)); // Add spacing
+
+    	        // Create button
+    	        JButton createButton = new JButton("Create my own key");
+    	        createButton.setPreferredSize(new Dimension(200, 40));
+    	        createButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+    	        createButton.addActionListener(e -> createGPGIdentity(frame));
+    	        mainPanel.add(createButton);
+
+    	        // Back button
+    	        JButton backButton = new JButton("Back");
+    	        backButton.setPreferredSize(new Dimension(200, 40));
+    	        backButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+    	        backButton.addActionListener(e -> createAccount(frame)); // Call the createAccount method
+    	        mainPanel.add(Box.createVerticalStrut(10)); // Add spacing between buttons
+    	        mainPanel.add(backButton);
+
+    	        frame.add(mainPanel);
+    	        frame.revalidate();
+    	        frame.repaint();
+    	    });
     	}
     	
     	public void createAccount(JFrame frame) {
@@ -204,12 +485,11 @@ public class App {
         continueButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                JOptionPane.showMessageDialog(frame, "Device Lock settings saved!");
-                // Implement further logic for saving settings here
+                insertGPGIdentity(frame);
             }
         });
         createAccountPanel.add(continueButton);
-
+        createAccountPanel.add(Box.createVerticalStrut(10)); // Add spacing
         // Back button (to go back to the main menu)
         JButton backButton = new JButton("Back");
         backButton.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -277,14 +557,13 @@ public class App {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                // Initialize the frame
+                // Initialise the frame
                 frame.setTitle("AmnesicChat - Account");
                 frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                 frame.setSize(650, 400);
                 frame.getContentPane().removeAll();
                 frame.setLayout(new BorderLayout());
 
-                // Set icon for the frame
                 try {
                     // Load the favicon image from the resources folder
                     URL faviconURL = getClass().getResource("/images/Favicon.png");
