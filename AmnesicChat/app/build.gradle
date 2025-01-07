@@ -29,6 +29,8 @@ dependencies {
     implementation("com.google.guava:guava:31.1-jre")
     implementation('org.junit.jupiter:junit-jupiter:5.9.1')
     implementation("com.github.oshi:oshi-core:6.2.2")
+    implementation('org.json:json:20241224')
+
 }
 
 application {

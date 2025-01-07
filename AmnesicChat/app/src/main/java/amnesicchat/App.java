@@ -8,6 +8,11 @@ import java.net.URL;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.charset.StandardCharsets;
+import org.json.JSONObject;
+import org.json.JSONException;
 import java.util.*;
 import oshi.SystemInfo;
 import oshi.hardware.HWDiskStore;
@@ -118,7 +123,7 @@ public class App {
         public void selectSecurityModules(JFrame frame) {
             this.frame = frame; // Set the public frame variable for external access
             frame.getContentPane().removeAll();
-            frame.setSize(600, 500);
+            frame.setSize(600, 550);
             frame.setLayout(new BorderLayout());
 
             // Header Panel
@@ -198,33 +203,61 @@ public class App {
         private void loadModules() {
             moduleListPanel.removeAll();
 
-            // Mock Data for Example Modules - Implementation Later
-            String[][] mockModules = {
-                    {"YubiKey - Challenge Response", "created by the-romanov (GitHub)"},
-                    {"SecuGen - Fingerprint Verification", "created by the-romanov (GitHub)"},
-                    {"Device - Module Usage", "created by unknown (unknown)"},
-                    {"Module 4 - Placeholder", "created by example (source)"}
-            };
+            // Folder containing module files
+            File moduleFolder = new File("src/main/resources/modules");
+            if (!moduleFolder.exists() || !moduleFolder.isDirectory()) {
+                JLabel errorLabel = new JLabel("No modules folder found.");
+                moduleListPanel.add(errorLabel);
+                moduleListPanel.revalidate();
+                moduleListPanel.repaint();
+                return;
+            }
 
+            // Get all files in the directory
+            File[] moduleFiles = moduleFolder.listFiles((dir, name) -> name.endsWith(".json")); // Assuming JSON metadata
+            if (moduleFiles == null || moduleFiles.length == 0) {
+                JLabel noModulesLabel = new JLabel("No modules found.");
+                moduleListPanel.add(noModulesLabel);
+                moduleListPanel.revalidate();
+                moduleListPanel.repaint();
+                return;
+            }
+
+            // Process files for pagination
             int start = (currentPage - 1) * MODULES_PER_PAGE;
-            int end = Math.min(start + MODULES_PER_PAGE, mockModules.length);
+            int end = Math.min(start + MODULES_PER_PAGE, moduleFiles.length);
 
             for (int i = start; i < end; i++) {
+                File moduleFile = moduleFiles[i];
+
+                // Read metadata (JSON example)
+                String moduleName = moduleFile.getName();
+                String moduleDescription = "Description not available";
+                try {
+                    String jsonContent = Files.readString(moduleFile.toPath(), StandardCharsets.UTF_8);
+                    JSONObject jsonObject = new JSONObject(jsonContent);
+                    moduleName = jsonObject.optString("name", moduleName);
+                    moduleDescription = jsonObject.optString("description", moduleDescription);
+                } catch (IOException | JSONException e) {
+                    e.printStackTrace();
+                }
+
+                // Create UI components
                 JPanel modulePanel = new JPanel();
                 modulePanel.setLayout(new BorderLayout());
                 modulePanel.setBorder(BorderFactory.createLineBorder(Color.GRAY));
 
-                JLabel moduleTitle = new JLabel(mockModules[i][0]);
+                JLabel moduleTitle = new JLabel(moduleName);
                 moduleTitle.setFont(new Font("SansSerif", Font.BOLD, 14));
 
-                JLabel moduleDescription = new JLabel(mockModules[i][1]);
-                moduleDescription.setFont(new Font("SansSerif", Font.PLAIN, 12));
+                JLabel moduleDescriptionLabel = new JLabel(moduleDescription);
+                moduleDescriptionLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
 
                 JCheckBox moduleCheckBox = new JCheckBox();
                 moduleCheckBox.setHorizontalAlignment(SwingConstants.RIGHT);
 
                 modulePanel.add(moduleTitle, BorderLayout.NORTH);
-                modulePanel.add(moduleDescription, BorderLayout.CENTER);
+                modulePanel.add(moduleDescriptionLabel, BorderLayout.CENTER);
                 modulePanel.add(moduleCheckBox, BorderLayout.EAST);
 
                 moduleListPanel.add(modulePanel);
@@ -237,7 +270,7 @@ public class App {
     	public void secondGPGIdentity(JFrame frame) {
     	    SwingUtilities.invokeLater(() -> {
     	        frame.setTitle("AmnesicChat - Create GPG Identity");
-    	        frame.setSize(700, 400);
+    	        frame.setSize(700, 450);
     	        frame.getContentPane().removeAll();
     	        frame.setLayout(new BorderLayout());
 
@@ -419,7 +452,7 @@ public class App {
     	public void createGPGIdentity(JFrame frame) {
     	    SwingUtilities.invokeLater(() -> {
     	        frame.setTitle("AmnesicChat - Create GPG Identity");
-    	        frame.setSize(700, 400);
+    	        frame.setSize(700, 450);
     	        frame.getContentPane().removeAll();
     	        frame.setLayout(new BorderLayout());
 
@@ -598,10 +631,6 @@ public class App {
     	                }
     	            } else {
     	                secondGPGIdentity(frame);
-    	                System.out.println("Name: " + name);
-    	                System.out.println("Email: " + email);
-    	                System.out.println("Password: " + new String(password));
-    	                System.out.println("Expiry: " + expiry);
     	            }
     	        });
     	        mainPanel.add(continueButton);
@@ -612,7 +641,7 @@ public class App {
     	    SwingUtilities.invokeLater(() -> {
     	        frame.getContentPane().removeAll();
     	        frame.setTitle("AmnesicChat - GPG Identity");
-    	        frame.setSize(650, 300);
+    	        frame.setSize(650, 350);
 
     	        // Main panel setup
     	        JPanel mainPanel = new JPanel();
@@ -870,7 +899,7 @@ public class App {
                 // Initialise the frame
                 frame.setTitle("AmnesicChat - Account");
                 frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-                frame.setSize(650, 400);
+                frame.setSize(650, 450);
                 frame.getContentPane().removeAll();
                 frame.setLayout(new BorderLayout());
 
