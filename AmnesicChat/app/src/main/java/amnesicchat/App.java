@@ -266,7 +266,6 @@ public class App {
             moduleListPanel.revalidate();
             moduleListPanel.repaint();
         }
-
     	public void secondGPGIdentity(JFrame frame) {
     	    SwingUtilities.invokeLater(() -> {
     	        frame.setTitle("AmnesicChat - Create GPG Identity");
@@ -307,6 +306,7 @@ public class App {
     	        // Algorithm field
     	        gbc.gridx = 0;
     	        gbc.gridy = 0;
+    	        frame.add(mainPanel, BorderLayout.CENTER);
     	        JLabel algorithmLabel = new JLabel("Algorithm:");
     	        algorithmLabel.setToolTipText("Select the encryption algorithm (e.g., RSA, ECC, DSA).");
     	        formPanel.add(algorithmLabel, gbc);
@@ -356,7 +356,7 @@ public class App {
     	        warningPanel.setLayout(new BoxLayout(warningPanel, BoxLayout.Y_AXIS));
     	        warningPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
     	        mainPanel.add(warningPanel);
-
+    	        frame.add(mainPanel, BorderLayout.CENTER);
     	        mainPanel.add(Box.createVerticalStrut(20));
 
     	        // Add event listener for algorithm selection
@@ -380,6 +380,7 @@ public class App {
     	        });
 
     	        // Continue button
+    	        frame.add(mainPanel, BorderLayout.CENTER);
     	        JButton continueButton = new JButton("Continue");
     	        continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);
     	        continueButton.addActionListener(e -> {
@@ -387,7 +388,6 @@ public class App {
     	            boolean hasErrors = false;
     	            boolean hasWarnings = false;
     	            StringBuilder warnings = new StringBuilder();
-
     	            // Validate algorithm
     	            String algorithm = (String) algorithmComboBox.getSelectedItem();
     	            if (algorithm == null || algorithm.isEmpty()) {
@@ -405,7 +405,7 @@ public class App {
     	                warningPanel.add(errorLabel);
     	                hasErrors = true;
     	            }
-
+        	        frame.add(mainPanel, BorderLayout.CENTER);
     	            // Validate export keys
     	            String exportOption = (String) exportKeysComboBox.getSelectedItem();
     	            if (exportOption == null || exportOption.equals(null)) {
@@ -414,10 +414,9 @@ public class App {
     	                warningPanel.add(errorLabel);
     	                hasErrors = true;
     	            }
-
     	            warningPanel.revalidate();
     	            warningPanel.repaint();
-
+        	        frame.add(mainPanel, BorderLayout.CENTER);
     	            // Handle results
     	            if (hasErrors) {
     	                JOptionPane.showMessageDialog(frame, "Please correct the highlighted errors.", "Validation Error",
@@ -445,6 +444,9 @@ public class App {
     	            }
     	        });
     	        mainPanel.add(continueButton);
+    	        frame.add(mainPanel);
+    	        frame.revalidate();
+    	        frame.repaint();
     	    });
     	}
 
@@ -552,6 +554,9 @@ public class App {
     	        JButton continueButton = new JButton("Continue");
     	        continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);
     	        continueButton.addActionListener(e -> {
+    	        	boolean doVerify = false;
+    	        	
+    	        	if (doVerify) {
     	            warningPanel.removeAll(); // Clear previous warnings
     	            boolean hasErrors = false;
     	            boolean hasWarnings = false;
@@ -632,8 +637,14 @@ public class App {
     	            } else {
     	                secondGPGIdentity(frame);
     	            }
+    	        	} else {
+    	                secondGPGIdentity(frame);
+    	        	}
     	        });
     	        mainPanel.add(continueButton);
+    	        frame.add(mainPanel);
+    	        frame.revalidate();
+    	        frame.repaint();
     	    });
     	}
 

@@ -1,3 +1,7 @@
 export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 
-java -jar ./app/build/libs/app.jar
+gradle shadowJar
+
+chmod +x ./app/build/libs/app-all.jar
+
+java -jar ./app/build/libs/app-all.jar
