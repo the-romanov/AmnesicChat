@@ -10,3 +10,5 @@
 
 rootProject.name = "AmnesicChat"
 include("app")
+include("pluginShare")
+include("modules:yubikey")

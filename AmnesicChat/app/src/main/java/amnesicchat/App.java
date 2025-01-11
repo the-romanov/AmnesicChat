@@ -1,27 +1,25 @@
-import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.io.File;
-import java.io.IOException;
-import javax.imageio.ImageIO;
-import java.net.URL;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
+import java.io.IOException;
+import java.lang.ClassNotFoundException;
+import java.lang.NoSuchMethodException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.charset.StandardCharsets;
-import org.json.JSONObject;
-import org.json.JSONException;
-import java.util.*;
-import oshi.SystemInfo;
-import oshi.hardware.HWDiskStore;
-import java.util.List;
-import java.util.ArrayList;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
+import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.Border;
@@ -29,11 +27,16 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import oshi.SystemInfo;
+import oshi.hardware.HWDiskStore;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 
 
 public class App {
-
+	
+	public URL labelURL = getClass().getResource("/images/AmnesicLabel.png");
     private JFrame frame; //JFrame is private so that we can isolate the variable to prevent potential tampering.
     private boolean useHardwareInfoMode = true; // Flag to switch between modes
     public int baseWidth = 650;
@@ -47,36 +50,358 @@ public class App {
         return frame;
     }
 
-    	public List<String> getAvailableStorageDevices() {
-    	    List<String> devices = new ArrayList<>();
+    	public List<String> selectedSecurityMethods = new ArrayList<>(); // Shows the path of how to decrypt account
+    	
+    	public void loggedInMenu(JFrame frame, String username, String publicFingerprint) {
+    	    // Clear frame
+    	    frame.getContentPane().removeAll();
 
-    	    if (useHardwareInfoMode) {
-    	        // Use hardware information (SystemInfo) to get devices
-    	        SystemInfo systemInfo = new SystemInfo();
-    	        List<HWDiskStore> diskStores = systemInfo.getHardware().getDiskStores();
+    	    // Set frame size
+    	    frame.setSize(700, 650);
 
-    	        for (HWDiskStore diskStore : diskStores) {
-    	            devices.add(diskStore.getName());
-    	        }
+    	    // Create the main panel
+    	    JPanel panel = new JPanel();
+    	    panel.setLayout(null); // Using null layout for custom positioning
+
+    	    // Calculate center points
+    	    int frameWidth = frame.getWidth();
+    	    int frameHeight = frame.getHeight();
+
+    	    // Add AmnesicChat label
+    	    JLabel imageLabel = new JLabel();
+    	    if (labelURL != null) {
+    	        ImageIcon originalIcon = new ImageIcon(labelURL);
+    	        imageLabel.setIcon(originalIcon);
     	    } else {
-    	        // Use file system roots (drives)
-    	        File[] roots = File.listRoots();
-    	        for (File root : roots) {
-    	            devices.add(root.getAbsolutePath());
-    	        }
+    	        System.out.println("Image not found!");
     	    }
-    	    return devices;
+    	    int imageLabelWidth = 650;
+    	    int imageLabelHeight = 120;
+    	    imageLabel.setBounds((frameWidth - imageLabelWidth) / 2, 20, imageLabelWidth, imageLabelHeight);
+    	    panel.add(imageLabel);
+
+    	    // Add username label
+    	    JLabel usernameLabel = new JLabel("Username: " + username + " (change)");
+    	    usernameLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+    	    int usernameLabelWidth = 400;
+    	    int usernameLabelHeight = 20;
+    	    usernameLabel.setBounds((frameWidth - usernameLabelWidth) / 2, 160, usernameLabelWidth, usernameLabelHeight);
+    	    panel.add(usernameLabel);
+
+    	    // Add fingerprint label
+    	    JLabel fingerprintLabel = new JLabel("Fingerprint: " + publicFingerprint);
+    	    fingerprintLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+    	    int fingerprintLabelWidth = 400;
+    	    int fingerprintLabelHeight = 20;
+    	    fingerprintLabel.setBounds((frameWidth - fingerprintLabelWidth) / 2, 190, fingerprintLabelWidth, fingerprintLabelHeight);
+    	    panel.add(fingerprintLabel);
+
+    	    // Add fingerprint info label
+    	    JLabel fingerprintInfo = new JLabel("<html>This fingerprint above is the public fingerprint. It can be shared with others to add you as a contact, just like saving a phone number.</html>");
+    	    fingerprintInfo.setFont(new Font("Arial", Font.ITALIC, 12));
+    	    int fingerprintInfoWidth = 550;
+    	    int fingerprintInfoHeight = 40; // Adjusted for multi-line text
+    	    fingerprintInfo.setBounds((frameWidth - fingerprintInfoWidth) / 2, 220, fingerprintInfoWidth, fingerprintInfoHeight);
+    	    panel.add(fingerprintInfo);
+
+    	    // Add buttons
+    	    String[] buttonLabels = {"JOIN A SERVER", "PEER TO PEER", "HOST A SERVER", "CHANGE ACCOUNT", "QUIT"};
+    	    int buttonWidth = 200;
+    	    int buttonHeight = 30;
+    	    int buttonSpacing = 40;
+    	    int initialYPosition = 280; // Starting y-position for the buttons
+
+    	    for (String text : buttonLabels) {
+    	        JButton button = new JButton(text);
+    	        button.setFont(new Font("Arial", Font.PLAIN, 14));
+    	        button.setBounds((frameWidth - buttonWidth) / 2, initialYPosition, buttonWidth, buttonHeight);
+    	        panel.add(button);
+    	        initialYPosition += buttonHeight + buttonSpacing;
+    	    }
+
+    	    // Add settings gear icon
+    	    JLabel settingsLabel = new JLabel();
+    	    ImageIcon gearIcon = new ImageIcon("/images/gear.png"); // Load your gear icon image
+    	    settingsLabel.setIcon(gearIcon);
+    	    int settingsIconSize = 30;
+    	    settingsLabel.setBounds(frameWidth - settingsIconSize - 20, 20, settingsIconSize, settingsIconSize); // Positioned top-right
+    	    panel.add(settingsLabel);
+
+    	    // Add panel to frame
+    	    frame.add(panel);
+    	    frame.revalidate();
+    	    frame.repaint();
     	}
     	
-    	public void frameUpdate(JFrame frame, int aD) {
-    		int aH = 0;
-            if (aD != 0) {
-                aH = aD * 50;
-            }
+    	public void firstTimeSetup(JFrame frame) {
+			// Clear frame
+			frame.getContentPane().removeAll();
 
-            // Set the dynamic size
-            frame.setSize(650, 350 + aH);
+            // Create the main panel
+            JPanel panel = new JPanel();
+            panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+            panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+            // Add title label
+            JLabel titleLabel = new JLabel("First Time Setup");
+            titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
+            titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            panel.add(titleLabel);
+
+            // Add a gap
+            panel.add(Box.createRigidArea(new Dimension(0, 20)));
+
+            // Add username label and text field
+            JLabel usernameLabel = new JLabel("Username:");
+            usernameLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+            usernameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            panel.add(usernameLabel);
+
+            JTextField usernameField = new JTextField(20);
+            usernameField.setMaximumSize(new Dimension(300, 25));
+            panel.add(usernameField);
+
+            // Add a gap
+            panel.add(Box.createRigidArea(new Dimension(0, 20)));
+
+            // Add description label and text area
+            JLabel descriptionLabel = new JLabel("Description:");
+            descriptionLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+            descriptionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            panel.add(descriptionLabel);
+
+            JTextArea descriptionArea = new JTextArea(5, 20);
+            descriptionArea.setLineWrap(true);
+            descriptionArea.setWrapStyleWord(true);
+            descriptionArea.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+            panel.add(descriptionArea);
+
+            // Add note label
+            JLabel noteLabel = new JLabel("(The username & description can be changed at any time later)");
+            noteLabel.setFont(new Font("Arial", Font.PLAIN, 12));
+            noteLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            panel.add(noteLabel);
+
+            // Add a gap
+            panel.add(Box.createRigidArea(new Dimension(0, 20)));
+
+            // Add continue button
+            JButton continueButton = new JButton("Continue");
+            continueButton.setFont(new Font("Arial", Font.PLAIN, 14));
+            continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+            continueButton.addActionListener(e -> {
+	        	loggedInMenu(frame, null, null);
+	        });
+            panel.add(continueButton);
+
+            // Add panel to frame
+            frame.add(panel);
+            frame.revalidate();
+            frame.repaint();
     	}
+    	
+    	public void setupSuccess(JFrame frame, List<String> selected) {
+    				// Clear frame
+    				frame.getContentPane().removeAll();
+    		        // Create the main panel to hold all components
+    		        JPanel panel = new JPanel();
+    		        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+    		        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+    		        // Add title label
+    		        JLabel titleLabel = new JLabel("Account Setup Successful!");
+    		        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
+    		        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+    		        panel.add(titleLabel);
+
+    		        // Add a gap
+    		        panel.add(Box.createRigidArea(new Dimension(0, 20)));
+
+    		        // Add success message
+    		        JLabel successMessage = new JLabel("Your account has now been fully set up!");
+    		        successMessage.setFont(new Font("Arial", Font.PLAIN, 14));
+    		        successMessage.setAlignmentX(Component.CENTER_ALIGNMENT);
+    		        panel.add(successMessage);
+
+    		        // Add another gap
+    		        panel.add(Box.createRigidArea(new Dimension(0, 20)));
+
+    		        // Add summary label
+    		        JLabel summaryLabel = new JLabel("Summary of Encryption Process to unlock your account fully:");
+    		        summaryLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+    		        summaryLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+    		        panel.add(summaryLabel);
+
+    		        // Add the list (COMMENTED FOR PROGRAM TO WORK <REQUIRES LIST OF ENCRYPTION METHODS WHICH I DON'T HAVE>)
+    		        /*DefaultListModel<String> listModel = new DefaultListModel<>();
+    		        for (int i = 0; i < selected.size(); i++) {
+    		            String item = selected.get(i);
+    		            listModel.addElement((i + 1) + " " + item);
+    		        }
+
+    		        JList<String> list = new JList<>(listModel);
+    		        list.setFont(new Font("Arial", Font.PLAIN, 14));
+    		        list.setAlignmentX(Component.CENTER_ALIGNMENT);
+    		        panel.add(list);
+					*/
+    		        // Add another gap
+    		        panel.add(Box.createRigidArea(new Dimension(0, 20)));
+
+    		        // Add Continue button
+    		        JButton continueButton = new JButton("Continue");
+    		        continueButton.setFont(new Font("Arial", Font.PLAIN, 14));
+    		        continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+    		        continueButton.addActionListener(e -> {
+    		        	firstTimeSetup(frame);
+    		        });
+    		        panel.add(continueButton);
+
+    		        // Add panel to frame
+    		        frame.add(panel);
+    		        frame.revalidate();
+    	            frame.repaint();
+    		    }
+    	
+    	public void createPassword(JFrame frame) {
+            // Clear frame
+            frame.getContentPane().removeAll();
+            frame.setSize(600, 400);
+            frame.setLayout(new BorderLayout());
+
+            // Header Panel
+            JPanel headerPanel = new JPanel();
+            headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
+            headerPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+
+            JLabel headerLabel = new JLabel("Create Password", SwingConstants.CENTER);
+            headerLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
+            headerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            headerPanel.add(headerLabel);
+
+            JLabel descriptionLabel = new JLabel("<html>If you lose or forget the password, you will lose access to your account.<br>"
+                    + "Keep the password extremely safe! Nobody will help you to recover your account once you lose the password.</html>",
+                    SwingConstants.CENTER);
+            descriptionLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+            descriptionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            headerPanel.add(Box.createVerticalStrut(10));
+            headerPanel.add(descriptionLabel);
+
+            frame.add(headerPanel, BorderLayout.NORTH);
+
+            // Center Panel
+            JPanel centerPanel = new JPanel();
+            centerPanel.setLayout(new GridBagLayout());
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.fill = GridBagConstraints.HORIZONTAL;
+            gbc.insets = new Insets(10, 10, 10, 10);
+
+            // Password Field
+            gbc.gridx = 0;
+            gbc.gridy = 0;
+            gbc.gridwidth = 2;
+            JLabel passwordLabel = new JLabel("Password:");
+            passwordLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+            centerPanel.add(passwordLabel, gbc);
+
+            gbc.gridx = 2;
+            gbc.gridy = 0;
+            gbc.gridwidth = 3;
+            JPasswordField passwordField = new JPasswordField(20);
+            centerPanel.add(passwordField, gbc);
+
+            // Encryption Methods
+            gbc.gridx = 0;
+            gbc.gridy = 1;
+            gbc.gridwidth = 2;
+            JLabel encryptionLabel = new JLabel("Encryption Method(s):");
+            encryptionLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+            centerPanel.add(encryptionLabel, gbc);
+
+            JPanel encryptionMethodsPanel = new JPanel();
+            encryptionMethodsPanel.setLayout(new GridLayout(2, 3, 5, 5));
+            JCheckBox aesCheckbox = new JCheckBox("AES");
+            JCheckBox serpentCheckbox = new JCheckBox("Serpent");
+            JCheckBox twofishCheckbox = new JCheckBox("Twofish");
+            JCheckBox camelliaCheckbox = new JCheckBox("Camellia");
+            JCheckBox kuzCheckbox = new JCheckBox("Kuznyechik");
+
+            encryptionMethodsPanel.add(aesCheckbox);
+            encryptionMethodsPanel.add(serpentCheckbox);
+            encryptionMethodsPanel.add(twofishCheckbox);
+            encryptionMethodsPanel.add(camelliaCheckbox);
+            encryptionMethodsPanel.add(kuzCheckbox);
+
+            gbc.gridx = 2;
+            gbc.gridy = 1;
+            gbc.gridwidth = 3;
+            centerPanel.add(encryptionMethodsPanel, gbc);
+
+            // Encryption Order
+            gbc.gridx = 0;
+            gbc.gridy = 2;
+            gbc.gridwidth = 2;
+            JLabel orderLabel = new JLabel("Encryption Order:");
+            orderLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+            centerPanel.add(orderLabel, gbc);
+
+            DefaultListModel<String> orderListModel = new DefaultListModel<>();
+            JList<String> orderList = new JList<>(orderListModel);
+            orderList.setVisibleRowCount(5);
+            orderList.setFixedCellHeight(20);
+            orderList.setFixedCellWidth(100);
+            JScrollPane scrollPane = new JScrollPane(orderList);
+
+            gbc.gridx = 2;
+            gbc.gridy = 2;
+            gbc.gridwidth = 3;
+            centerPanel.add(scrollPane, gbc);
+
+            // Add encryption methods to order list
+            ActionListener addToOrder = e -> {
+                JCheckBox source = (JCheckBox) e.getSource();
+                if (source.isSelected()) {
+                    orderListModel.addElement(source.getText());
+                } else {
+                    orderListModel.removeElement(source.getText());
+                }
+            };
+
+            aesCheckbox.addActionListener(addToOrder);
+            serpentCheckbox.addActionListener(addToOrder);
+            twofishCheckbox.addActionListener(addToOrder);
+            camelliaCheckbox.addActionListener(addToOrder);
+            kuzCheckbox.addActionListener(addToOrder);
+
+            frame.add(centerPanel, BorderLayout.CENTER);
+
+            // Footer Panel
+            JPanel footerPanel = new JPanel();
+            footerPanel.setLayout(new BoxLayout(footerPanel, BoxLayout.Y_AXIS));
+            footerPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+
+            JButton continueButton = new JButton("Continue");
+            continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+            continueButton.addActionListener(e -> {
+                char[] password = passwordField.getPassword();
+                if (password.length == 0) {
+                    JOptionPane.showMessageDialog(frame, "Password cannot be empty!", "Error", JOptionPane.ERROR_MESSAGE);
+                } else if (orderListModel.isEmpty()) {
+                    JOptionPane.showMessageDialog(frame, "Select at least one encryption method!", "Error", JOptionPane.ERROR_MESSAGE);
+                } else {
+                    ArrayList<String> encryptionOrder = new ArrayList<>();
+                    for (int i = 0; i < orderListModel.size(); i++) {
+                        encryptionOrder.add(orderListModel.getElementAt(i));
+                    }
+                    setupSuccess(frame, null);
+                }
+            });
+
+            footerPanel.add(continueButton);
+            frame.add(footerPanel, BorderLayout.SOUTH);
+
+            frame.revalidate();
+            frame.repaint();
+        }
     	
     	private void updateDeviceList(JPanel createAccountPanel) {
     	    // Get the available storage devices based on the mode selected
@@ -121,7 +446,6 @@ public class App {
         public int currentPage = 1; // Tracks the current page
 
         public void selectSecurityModules(JFrame frame) {
-            this.frame = frame; // Set the public frame variable for external access
             frame.getContentPane().removeAll();
             frame.setSize(600, 550);
             frame.setLayout(new BorderLayout());
@@ -138,6 +462,7 @@ public class App {
 
             headerPanel.add(Box.createVerticalStrut(10));
 
+            // Description panel
             JLabel descriptionLabel = new JLabel(
                     "<html>If you have modules imported in the module folder, you may load them to further secure your account. If not, you may continue.</html>",
                     SwingConstants.CENTER);
@@ -175,7 +500,7 @@ public class App {
 
             JButton continueButton = new JButton("Continue");
             continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-            continueButton.addActionListener(e -> JOptionPane.showMessageDialog(frame, "Continue clicked!"));
+            continueButton.addActionListener(e -> createPassword(frame));
 
             footerPanel.add(navigationPanel);
             footerPanel.add(Box.createVerticalStrut(10));
@@ -266,6 +591,7 @@ public class App {
             moduleListPanel.revalidate();
             moduleListPanel.repaint();
         }
+        
     	public void secondGPGIdentity(JFrame frame) {
     	    SwingUtilities.invokeLater(() -> {
     	        frame.setTitle("AmnesicChat - Create GPG Identity");
@@ -384,7 +710,7 @@ public class App {
     	        JButton continueButton = new JButton("Continue");
     	        continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);
     	        continueButton.addActionListener(e -> {
-    	            warningPanel.removeAll(); // Clear previous warnings
+    	        	warningPanel.removeAll(); // Clear previous warnings
     	            boolean hasErrors = false;
     	            boolean hasWarnings = false;
     	            StringBuilder warnings = new StringBuilder();
@@ -437,10 +763,6 @@ public class App {
     	                }
     	            } else {
     	            	selectSecurityModules(frame);
-    	                System.out.println("Algorithm: " + algorithm);
-    	                System.out.println("Key Size: " + keySize);
-    	                System.out.println("Comments: " + commentsField.getText());
-    	                System.out.println("Export Option: " + exportOption);
     	            }
     	        });
     	        mainPanel.add(continueButton);
@@ -730,6 +1052,37 @@ public class App {
     	    });
     	}
     	
+    	public List<String> getAvailableStorageDevices() {
+    	    List<String> devices = new ArrayList<>();
+
+    	    if (useHardwareInfoMode) {
+    	        // Use hardware information (SystemInfo) to get devices
+    	        SystemInfo systemInfo = new SystemInfo();
+    	        List<HWDiskStore> diskStores = systemInfo.getHardware().getDiskStores();
+
+    	        for (HWDiskStore diskStore : diskStores) {
+    	            devices.add(diskStore.getName());
+    	        }
+    	    } else {
+    	        // Use file system roots (drives)
+    	        File[] roots = File.listRoots();
+    	        for (File root : roots) {
+    	            devices.add(root.getAbsolutePath());
+    	        }
+    	    }
+    	    return devices;
+    	}
+    	
+    	public void frameUpdate(JFrame frame, int aD) {
+    		int aH = 0;
+            if (aD != 0) {
+                aH = aD * 50;
+            }
+
+            // Set the dynamic size
+            frame.setSize(650, 350 + aH);
+    	}
+    	
     	public void createAccount(JFrame frame) {
     	// Ensure this method runs on EDT (Event Dispatch Thread for stability of program)
         SwingUtilities.invokeLater(new Runnable() {
@@ -935,9 +1288,8 @@ public class App {
 
                 // Banner setup
                 JLabel imageLabel = new JLabel();
-                URL imageURL = getClass().getResource("/images/AmnesicLabel.png");
-                if (imageURL != null) {
-                    ImageIcon originalIcon = new ImageIcon(imageURL);
+                if (labelURL != null) {
+                    ImageIcon originalIcon = new ImageIcon(labelURL);
                     imageLabel.setIcon(originalIcon);
                 } else {
                     System.out.println("Image not found!");
