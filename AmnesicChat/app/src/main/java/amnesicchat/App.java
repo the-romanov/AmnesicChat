@@ -31,6 +31,13 @@ import oshi.SystemInfo;
 import oshi.hardware.HWDiskStore;
 import org.json.JSONException;
 import org.json.JSONObject;
+import java.util.HashMap;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.stream.Collectors;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.IOException;
 
 
 
@@ -49,15 +56,568 @@ public class App {
     public JFrame getJFrame() {
         return frame;
     }
+    
+    public void createJoinServerUI(JFrame frame) {
+        // Clear frame
+        frame.getContentPane().removeAll();
+        frame.setSize(600, 400);
+        frame.setLayout(null); // Use null layout for custom positioning
+
+        // Title Label
+        JLabel titleLabel = new JLabel("Join A Server:");
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
+        titleLabel.setBounds(220, 20, 200, 30);
+        frame.add(titleLabel);
+
+        // IP/Domain Label and TextField
+        JLabel ipLabel = new JLabel("IP/Domain:");
+        ipLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+        ipLabel.setBounds(50, 80, 100, 20);
+        frame.add(ipLabel);
+
+        JTextField ipField = new JTextField();
+        ipField.setBounds(150, 80, 350, 25);
+        frame.add(ipField);
+
+        // Server Types Label and Buttons
+        JLabel serverTypeLabel = new JLabel("Server Types:");
+        serverTypeLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+        serverTypeLabel.setBounds(50, 130, 100, 20);
+        frame.add(serverTypeLabel);
+
+        JToggleButton directoryButton = new JToggleButton("DIRECTORY");
+        directoryButton.setBounds(150, 130, 110, 30);
+        frame.add(directoryButton);
+
+        JToggleButton chatButton = new JToggleButton("CHAT");
+        chatButton.setBounds(270, 130, 110, 30);
+        frame.add(chatButton);
+
+        JToggleButton pingButton = new JToggleButton("PING");
+        pingButton.setBounds(390, 130, 110, 30);
+        frame.add(pingButton);
+
+        // Server Password Label and TextField
+        JLabel passwordLabel = new JLabel("Server Password:");
+        passwordLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+        passwordLabel.setBounds(50, 180, 150, 20);
+        frame.add(passwordLabel);
+
+        JTextField passwordField = new JTextField();
+        passwordField.setBounds(200, 180, 300, 25);
+        frame.add(passwordField);
+
+        // Info Icon and Tooltip
+        JLabel infoLabel = new JLabel(new ImageIcon("info_icon.png")); // Replace with the path to your info icon
+        infoLabel.setBounds(50, 230, 20, 20);
+        frame.add(infoLabel);
+
+        JLabel tooltipLabel = new JLabel("<html>Allows you to connect to different servers that may just have<br>" +
+                "only one type of server running only. Example: One address<br>" +
+                "can be a ping server, the other can be a chat server.</html>");
+        tooltipLabel.setFont(new Font("Arial", Font.ITALIC, 12));
+        tooltipLabel.setBounds(80, 230, 400, 50);
+        frame.add(tooltipLabel);
+
+        // Buttons for Open Connection and Connect
+        JButton openConnectionButton = new JButton("OPEN ANOTHER CONNECTION");
+        openConnectionButton.setBounds(50, 300, 220, 30);
+        frame.add(openConnectionButton);
+
+        JButton connectButton = new JButton("CONNECT");
+        connectButton.setBounds(300, 300, 150, 30);
+        frame.add(connectButton);
+
+
+        frame.revalidate();
+        frame.repaint();
+    }
+    
+    public void createChatRoomUI(JFrame frame) {
+        // Clear frame
+        frame.getContentPane().removeAll();
+        frame.setSize(1000, 600);
+        frame.setLayout(new BorderLayout());
+
+        // Left panel for users online
+        JPanel usersPanel = new JPanel();
+        usersPanel.setLayout(new BoxLayout(usersPanel, BoxLayout.Y_AXIS));
+        usersPanel.setPreferredSize(new Dimension(200, 600));
+        usersPanel.setBorder(BorderFactory.createTitledBorder("Users Online:"));
+
+        // Sample users
+        String[] users = {"amnesic1122qs", "amnesic1ea5", "amnesic1vw42", "amnesic1aw35"};
+        for (String user : users) {
+            JPanel userPanel = new JPanel();
+            userPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
+            JLabel userLabel = new JLabel(user);
+            JLabel statusIcon = new JLabel(new ImageIcon("status_icon.png")); // Replace
+            userPanel.add(statusIcon);
+            userPanel.add(userLabel);
+            usersPanel.add(userPanel);
+        }
+
+        // Middle panel for chat
+        JPanel chatPanel = new JPanel();
+        chatPanel.setLayout(new BorderLayout());
+
+        // Chat messages
+        JTextArea chatArea = new JTextArea();
+        chatArea.setEditable(false);
+        chatArea.setText("amnesic1122qs: [NO PGP KEY]\n" +
+                "amnesic1ea5: Oh cool!\n" +
+                "amnesic1ea5: [USER NO AUTH]\n" +
+                "amnesic1vw42: [NO DEVICE ID]\n" +
+                "amnesic1aw: Sounds like a plan!\n" +
+                "amnesic441: Alright, so when will we meet?");
+        JScrollPane chatScrollPane = new JScrollPane(chatArea);
+        chatPanel.add(chatScrollPane, BorderLayout.CENTER);
+
+        // Text input area
+        JPanel inputPanel = new JPanel();
+        inputPanel.setLayout(new BorderLayout());
+        JTextField inputField = new JTextField();
+        JButton sendButton = new JButton("Send");
+        inputPanel.add(inputField, BorderLayout.CENTER);
+        inputPanel.add(sendButton, BorderLayout.EAST);
+        chatPanel.add(inputPanel, BorderLayout.SOUTH);
+
+        // Center image
+        JLabel imageLabel = new JLabel(new ImageIcon("image.png")); // Replace 
+        chatPanel.add(imageLabel, BorderLayout.NORTH);
+
+        // Right panel for options
+        JPanel optionsPanel = new JPanel();
+        optionsPanel.setLayout(new BoxLayout(optionsPanel, BoxLayout.Y_AXIS));
+        optionsPanel.setPreferredSize(new Dimension(200, 600));
+        optionsPanel.setBorder(BorderFactory.createTitledBorder("P2P / {CHAT ROOM NAME}"));
+
+        // Encryption methods
+        JLabel encryptionLabel = new JLabel("Encryption Methods for Sending Messages:");
+        optionsPanel.add(encryptionLabel);
+
+        String[] methods = {"AES", "Serpent", "Twofish", "Camellia", "Kuznyechik"};
+        for (String method : methods) {
+            JCheckBox checkBox = new JCheckBox(method);
+            optionsPanel.add(checkBox);
+        }
+
+        // Buttons
+        JButton openChatButton = new JButton("Open Another Chat Session");
+        JButton inviteButton = new JButton("Invite People");
+        JButton disconnectButton = new JButton("Disconnect");
+        optionsPanel.add(Box.createRigidArea(new Dimension(0, 20))); // Spacing
+        optionsPanel.add(openChatButton);
+        optionsPanel.add(inviteButton);
+        optionsPanel.add(disconnectButton);
+
+        // Add components to the frame
+        frame.add(usersPanel, BorderLayout.WEST);
+        frame.add(chatPanel, BorderLayout.CENTER);
+        frame.add(optionsPanel, BorderLayout.EAST);
+
+        frame.revalidate();
+        frame.repaint();
+    }
+
+
+    public void peerToPeerUI(JFrame frame) {
+    	// Clear frame
+        frame.getContentPane().removeAll();
+        
+        // Set up the frame properties
+        frame.setTitle("Peer To Peer");
+        frame.setLayout(new BorderLayout());
+        frame.setSize(600, 400);
+
+        // Panel for the title
+        JLabel titleLabel = new JLabel("PEER TO PEER", JLabel.CENTER);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 20));
+        frame.add(titleLabel, BorderLayout.NORTH);
+
+        // Main panel for the user list
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        // Sample user data 
+        String[][] users = {
+            {"vegas1255", "2q-8A_*4jojsa89u%*£;", "Authorised Friend", "Look at the stars and you will be blinded by light.", "white"},
+            {"mega223", "90sauMO4maosimfwa4", "GPG Mismatch", "Just chilling.", "yellow"},
+            {"vegas1255", "Akafs=K\"$-0sdpmfrasr", "Identity Flush", "123e", "red"},
+            {"abaaaaasus", "25)(*U\"A)Qj092q4j)980", "Partial Authorisation (You)", "Abacus is nice, you.", "purple"}
+        };
+
+        // Add users to the panel
+        for (int i = 0; i < users.length; i++) {
+            String username = users[i][0];
+            String fingerprint = users[i][1];
+            String relation = users[i][2];
+            String note = users[i][3];
+            String color = users[i][4];
+
+            JPanel userPanel = new JPanel(new BorderLayout());
+            userPanel.setBorder(BorderFactory.createLineBorder(Color.BLACK, 1));
+
+            // Set background color
+            switch (color.toLowerCase()) {
+                case "yellow": userPanel.setBackground(Color.YELLOW); break;
+                case "red": userPanel.setBackground(Color.RED); break;
+                case "purple": userPanel.setBackground(Color.MAGENTA); break;
+                default: userPanel.setBackground(Color.WHITE); break;
+            }
+
+            // User info label
+            JLabel userInfo = new JLabel(
+                "<html><b>" + username + "</b><br>Fingerprint: " + fingerprint +
+                "<br>Relation: " + relation + "<br>" + note + "</html>");
+            userPanel.add(userInfo, BorderLayout.CENTER);
+
+            // Button panel
+            JPanel buttonPanel = new JPanel();
+            buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.Y_AXIS));
+
+            JButton startSessionButton = new JButton("Start P2P Session");
+            JButton authorizeButton = new JButton(relation.equals("Authorised Friend") ? "Reauthorise User" : "Authorise User");
+            buttonPanel.add(startSessionButton);
+            buttonPanel.add(authorizeButton);
+
+            userPanel.add(buttonPanel, BorderLayout.EAST);
+
+            // Add the user panel to the main panel
+            gbc.gridx = 0;
+            gbc.gridy = i;
+            gbc.weightx = 1.0;
+            gbc.gridwidth = 1;
+            mainPanel.add(userPanel, gbc);
+        }
+
+        // Add the main panel to the frame
+        JScrollPane scrollPane = new JScrollPane(mainPanel);
+        frame.add(scrollPane, BorderLayout.CENTER);
+
+        // Footer panel for navigation buttons
+        JPanel footerPanel = new JPanel(new FlowLayout());
+        JButton previousButton = new JButton("PREVIOUS");
+        JButton nextButton = new JButton("NEXT");
+        footerPanel.add(previousButton);
+        footerPanel.add(nextButton);
+        frame.add(footerPanel, BorderLayout.SOUTH);
+        frame.revalidate();
+        frame.repaint();
+    }
+    
+public void connectionUI(JFrame frame) {
+	// Clear frame
+    frame.getContentPane().removeAll();
+    
+    // Set up the frame properties
+    frame.setTitle("Connection Settings");
+    frame.setLayout(new GridBagLayout());
+    frame.setSize(500, 300);
+
+    // Use GridBagConstraints for layout
+    GridBagConstraints gbc = new GridBagConstraints();
+    gbc.insets = new Insets(10, 10, 10, 10);
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+
+    // Add "IP Address/Domain" label and text field
+    JLabel ipLabel = new JLabel("IP Address/Domain:");
+    gbc.gridx = 0;
+    gbc.gridy = 0;
+    frame.add(ipLabel, gbc);
+
+    JTextField ipField = new JTextField();
+    gbc.gridx = 1;
+    gbc.gridy = 0;
+    gbc.gridwidth = 2;
+    frame.add(ipField, gbc);
+
+    // Add "Peer To Peer Port" label and text field
+    JLabel portLabel = new JLabel("Peer To Peer Port:");
+    gbc.gridx = 0;
+    gbc.gridy = 1;
+    gbc.gridwidth = 1;
+    frame.add(portLabel, gbc);
+
+    JTextField portField = new JTextField();
+    gbc.gridx = 1;
+    gbc.gridy = 1;
+    gbc.gridwidth = 2;
+    frame.add(portField, gbc);
+
+    // Add "Disconnect Servers" label and checkboxes
+    JLabel disconnectLabel = new JLabel("Disconnect Servers on Successful Connection:");
+    gbc.gridx = 0;
+    gbc.gridy = 2;
+    gbc.gridwidth = 3;
+    frame.add(disconnectLabel, gbc);
+
+    JCheckBox directoryBox = new JCheckBox("DIRECTORY");
+    JCheckBox chatBox = new JCheckBox("CHAT");
+    JCheckBox pingBox = new JCheckBox("PING");
+    gbc.gridx = 0;
+    gbc.gridy = 3;
+    gbc.gridwidth = 1;
+    frame.add(directoryBox, gbc);
+    gbc.gridx = 1;
+    gbc.gridy = 3;
+    frame.add(chatBox, gbc);
+    gbc.gridx = 2;
+    gbc.gridy = 3;
+    frame.add(pingBox, gbc);
+
+    // Add "Attempt Connection" button
+    JButton attemptConnectionButton = new JButton("Attempt Connection");
+    gbc.gridx = 0;
+    gbc.gridy = 4;
+    gbc.gridwidth = 3;
+    gbc.anchor = GridBagConstraints.CENTER;
+    frame.add(attemptConnectionButton, gbc);
+
+    // Add Back Button to go back to loggedInMenu
+    JButton backButton = new JButton("Back");
+    gbc.gridx = 0;
+    gbc.gridy = 5;
+    gbc.gridwidth = 3;
+    gbc.anchor = GridBagConstraints.CENTER;
+    frame.add(backButton, gbc);
+
+    // Action Listener for the Back Button
+    backButton.addActionListener(new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            loggedInMenu(frame, null, null); 
+        }
+    });
+}
+
+public void directoryServer(JFrame frame) {
+    // Clear frame
+    frame.getContentPane().removeAll();
+    
+    // Set up frame properties
+    frame.setTitle("Directory Server");
+    frame.setLayout(new BorderLayout());
+    frame.setSize(900, 600);
+
+    // Left Panel for buttons and user details
+    JPanel leftPanel = new JPanel();
+    leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
+    leftPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+    // Add user information
+    JLabel usernameLabel = new JLabel("USERNAME: progamer441");
+    usernameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+    leftPanel.add(usernameLabel);
+    leftPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+
+    // Add buttons with margin
+    String[] buttons = {
+        "REFRESH LIST", 
+        "SHOW CONTACTS", 
+        "SHOW DEVICE ID CHANGED", 
+        "SHOW GPG KEY CHANGED", 
+        "SHOW USER NAME CHANGE", 
+        "CONNECT TO ANOTHER SERVER", 
+        "DISCONNECT FROM THIS SERVER"
+    };
+    for (String btnText : buttons) {
+        JButton button = new JButton(btnText);
+        button.setAlignmentX(Component.CENTER_ALIGNMENT);
+        button.setPreferredSize(new Dimension(200, 40)); // Adjust button size
+        leftPanel.add(button);
+        leftPanel.add(Box.createRigidArea(new Dimension(0, 10))); // Margin between buttons
+    }
+
+    // Add left panel to frame
+    frame.add(leftPanel, BorderLayout.WEST);
+
+    // Center Panel for user list
+    JPanel centerPanel = new JPanel();
+    centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
+    JScrollPane scrollPane = new JScrollPane(centerPanel);
+
+    // Add user entries
+    String[][] userEntries = {
+        {"User: vegas1255", "Fingerprint: 2q-8A_*4jojsa89u%%£;", "Relation: None", "WHITE"},
+        {"User: vegas1255", "Fingerprint: aw54Al_)asdasf-=et6w", "Relation: Contact List", "PINK"},
+        {"User: vegas1254", "Fingerprint: awrA%£P[ksdfpk-03q5", "Relation: Device Mismatch", "YELLOW"},
+        {"User: mega223", "Fingerprint: 90sauMO4maosimfwa4", "Relation: GPG Mismatch", "RED"},
+        {"User: vegas1255", "Fingerprint: Akafs=K\"$-0sdpmfrasr", "Relation: Identity Flush", "RED"},
+        {"User: abaaaaasus", "Fingerprint: 25)(\"U^A)Qj092q4j\\980", "Relation: Partial Authorisation (You)", "PURPLE"},
+        {"User: abacus", "Fingerprint: 5,loa,w)(\"$q24waraw0", "Relation: Authorised Friend", "BLUE"},
+        {"User: absus", "Fingerprint: 4jo*(]qnm5lkstdg8p8w", "Relation: Partial Authorisation (User)", "PURPLE"}
+    };
+
+    for (String[] entry : userEntries) {
+        JPanel userPanel = new JPanel();
+        userPanel.setLayout(new BoxLayout(userPanel, BoxLayout.Y_AXIS));
+        userPanel.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+        userPanel.setBackground(Color.decode(entry[3].equals("WHITE") ? "#FFFFFF" :
+                              entry[3].equals("PINK") ? "#FFC0CB" :
+                              entry[3].equals("YELLOW") ? "#FFFF00" :
+                              entry[3].equals("RED") ? "#FF0000" :
+                              entry[3].equals("PURPLE") ? "#800080" : "#0000FF"));
+        for (int i = 0; i < 3; i++) {
+            JLabel label = new JLabel(entry[i]);
+            label.setPreferredSize(new Dimension(600, 20)); // Expand labels to the right
+            userPanel.add(label);
+        }
+        centerPanel.add(userPanel);
+        centerPanel.add(Box.createRigidArea(new Dimension(0, 10))); // Margin between user panels
+    }
+
+    // Add scroll pane to center panel
+    frame.add(scrollPane, BorderLayout.CENTER);
+
+    // Bottom Panel for navigation (Pagination)
+    JPanel bottomPanel = new JPanel();
+    bottomPanel.setLayout(new FlowLayout(FlowLayout.RIGHT));
+
+    JButton previousButton = new JButton("PREVIOUS");
+    JButton nextButton = new JButton("NEXT");
+
+    bottomPanel.add(new JLabel("PAGE 1/3"));
+    bottomPanel.add(previousButton);
+    bottomPanel.add(nextButton);
+
+    // Add bottom panel to frame
+    frame.add(bottomPanel, BorderLayout.SOUTH);
+
+    // Revalidate and repaint the frame to ensure layout is updated
+    frame.revalidate();
+    frame.repaint();
+}
 
     	public List<String> selectedSecurityMethods = new ArrayList<>(); // Shows the path of how to decrypt account
+ 
+    	public void settingsUI() {
+    	    JFrame frame = new JFrame("Settings UI");
+    	    frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); // Close only the frame, not the program
+    	    frame.setSize(800, 600);
+    	    frame.setLayout(new GridLayout(1, 2));
+
+    	    // Left panel for appearance settings
+    	    JPanel appearancePanel = new JPanel();
+    	    appearancePanel.setLayout(new BoxLayout(appearancePanel, BoxLayout.Y_AXIS));
+    	    appearancePanel.setBorder(BorderFactory.createTitledBorder("Appearance:"));
+
+    	    JCheckBox verboseMode = new JCheckBox("Verbose Mode");
+    	    JCheckBox darkMode = new JCheckBox("Dark Mode");
+    	    JSlider zoomLevel = new JSlider(25, 200, 100);
+    	    zoomLevel.setPaintLabels(true);
+    	    zoomLevel.setPaintTicks(true);
+    	    zoomLevel.setMajorTickSpacing(25);
+    	    zoomLevel.setBorder(BorderFactory.createTitledBorder("Zoom Level"));
+
+    	    JSlider fontSize = new JSlider(6, 28, 14);
+    	    fontSize.setPaintLabels(true);
+    	    fontSize.setPaintTicks(true);
+    	    fontSize.setMajorTickSpacing(6);
+    	    fontSize.setBorder(BorderFactory.createTitledBorder("Font Size"));
+
+    	    JComboBox<String> fontStyle = new JComboBox<>(new String[]{"DejaVu Sans", "Arial", "Courier New", "Verdana"});
+    	    fontStyle.setBorder(BorderFactory.createTitledBorder("Font Style"));
+
+    	    JCheckBox launchAtStartup = new JCheckBox("Launch At Startup?");
+    	    JCheckBox startupMinimised = new JCheckBox("Startup Minimised");
+
+    	    appearancePanel.add(verboseMode);
+    	    appearancePanel.add(darkMode);
+    	    appearancePanel.add(zoomLevel);
+    	    appearancePanel.add(fontSize);
+    	    appearancePanel.add(fontStyle);
+    	    appearancePanel.add(launchAtStartup);
+    	    appearancePanel.add(startupMinimised);
+
+    	    // Right panel for notifications and other settings
+    	    JPanel notificationsPanel = new JPanel();
+    	    notificationsPanel.setLayout(new BoxLayout(notificationsPanel, BoxLayout.Y_AXIS));
+    	    notificationsPanel.setBorder(BorderFactory.createTitledBorder("Notifications:"));
+
+    	    JTextField mediaDownloadLimit = new JTextField("9999");
+    	    mediaDownloadLimit.setBorder(BorderFactory.createTitledBorder("Media Download Limit (MB/s)"));
+
+    	    JTextField openModulesFolder = new JTextField();
+    	    openModulesFolder.setBorder(BorderFactory.createTitledBorder("Open Modules Folder"));
+
+    	    JButton saveButton = new JButton("Save Settings");
+    	    JButton loadButton = new JButton("Load Settings");
+
+    	    notificationsPanel.add(mediaDownloadLimit);
+    	    notificationsPanel.add(openModulesFolder);
+    	    notificationsPanel.add(saveButton);
+    	    notificationsPanel.add(loadButton);
+
+    	    // Add listeners for save and load buttons
+    	    saveButton.addActionListener(e -> saveSettings(
+    	        verboseMode.isSelected(), 
+    	        darkMode.isSelected(), 
+    	        zoomLevel.getValue(), 
+    	        fontSize.getValue(), 
+    	        (String) fontStyle.getSelectedItem(), 
+    	        launchAtStartup.isSelected(), 
+    	        startupMinimised.isSelected(), 
+    	        mediaDownloadLimit.getText(), 
+    	        openModulesFolder.getText()
+    	    ));
+
+    	    loadButton.addActionListener(e -> loadSettings(
+    	        verboseMode, 
+    	        darkMode, 
+    	        zoomLevel, 
+    	        fontSize, 
+    	        fontStyle, 
+    	        launchAtStartup, 
+    	        startupMinimised, 
+    	        mediaDownloadLimit, 
+    	        openModulesFolder
+    	    ));
+
+    	    // Add panels to frame
+    	    frame.add(appearancePanel);
+    	    frame.add(notificationsPanel);
+    	    frame.setVisible(true);
+    	}
+
+    	// Example saveSettings and loadSettings methods
+    	private void saveSettings(
+    	    boolean verboseMode, 
+    	    boolean darkMode, 
+    	    int zoomLevel, 
+    	    int fontSize, 
+    	    String fontStyle, 
+    	    boolean launchAtStartup, 
+    	    boolean startupMinimised, 
+    	    String mediaDownloadLimit, 
+    	    String openModulesFolder
+    	) {
+    	    // TO do
+    	}
+
+    	private void loadSettings(
+    	    JCheckBox verboseMode, 
+    	    JCheckBox darkMode, 
+    	    JSlider zoomLevel, 
+    	    JSlider fontSize, 
+    	    JComboBox<String> fontStyle, 
+    	    JCheckBox launchAtStartup, 
+    	    JCheckBox startupMinimised, 
+    	    JTextField mediaDownloadLimit, 
+    	    JTextField openModulesFolder
+    	) {
+    	    // TO do
+    	}
     	
     	public void loggedInMenu(JFrame frame, String username, String publicFingerprint) {
     	    // Clear frame
     	    frame.getContentPane().removeAll();
 
     	    // Set frame size
-    	    frame.setSize(700, 650);
+    	    frame.setSize(800, 650);
 
     	    // Create the main panel
     	    JPanel panel = new JPanel();
@@ -115,16 +675,44 @@ public class App {
     	        JButton button = new JButton(text);
     	        button.setFont(new Font("Arial", Font.PLAIN, 14));
     	        button.setBounds((frameWidth - buttonWidth) / 2, initialYPosition, buttonWidth, buttonHeight);
+
+    	        // Action listener for "Quit" button
+    	        if (text.equals("QUIT")) {
+    	            button.addActionListener(new ActionListener() {
+    	                public void actionPerformed(ActionEvent e) {
+    	                    System.exit(0); // Exit the program
+    	                }
+    	            });
+    	        }
+
+    	        // Action listener for "JOIN A SERVER" button
+    	        if (text.equals("JOIN A SERVER")) {
+    	            button.addActionListener(new ActionListener() {
+    	                public void actionPerformed(ActionEvent e) {
+    	                	createJoinServerUI(frame);
+    	                }
+    	            });
+    	        }
+
+    	        // Action listener for "PEER TO PEER" button
+    	        if (text.equals("PEER TO PEER")) {
+    	            button.addActionListener(new ActionListener() {
+    	                public void actionPerformed(ActionEvent e) {
+    	                    peerToPeerUI(frame); // Call peerToPeerUI
+    	                }
+    	            });
+    	        }
+
     	        panel.add(button);
     	        initialYPosition += buttonHeight + buttonSpacing;
     	    }
 
-    	    // Add settings gear icon
+    	    // Add settings gear icon at the top right of the screen
     	    JLabel settingsLabel = new JLabel();
     	    ImageIcon gearIcon = new ImageIcon("/images/gear.png"); // Load your gear icon image
     	    settingsLabel.setIcon(gearIcon);
     	    int settingsIconSize = 30;
-    	    settingsLabel.setBounds(frameWidth - settingsIconSize - 20, 20, settingsIconSize, settingsIconSize); // Positioned top-right
+    	    settingsLabel.setBounds(frame.getWidth() - settingsIconSize - 20, 20, settingsIconSize, settingsIconSize); // Positioned top-right
     	    panel.add(settingsLabel);
 
     	    // Add panel to frame
@@ -132,6 +720,7 @@ public class App {
     	    frame.revalidate();
     	    frame.repaint();
     	}
+
     	
     	public void firstTimeSetup(JFrame frame) {
 			// Clear frame
@@ -969,8 +1558,11 @@ public class App {
     	        frame.repaint();
     	    });
     	}
-
-    	public void insertGPGIdentity(JFrame frame) {
+    	
+    public void insertGPGIdentity(JFrame frame, List<String> hashedSerials) {
+    	    // Debugging: Print the hashed serials
+    	    System.out.println("Sorted and Hashed Serials:");
+    	    hashedSerials.forEach(System.out::println);
     	    SwingUtilities.invokeLater(() -> {
     	        frame.getContentPane().removeAll();
     	        frame.setTitle("AmnesicChat - GPG Identity");
@@ -1051,7 +1643,7 @@ public class App {
     	        frame.repaint();
     	    });
     	}
-    	
+
     	public List<String> getAvailableStorageDevices() {
     	    List<String> devices = new ArrayList<>();
 
@@ -1082,178 +1674,162 @@ public class App {
             // Set the dynamic size
             frame.setSize(650, 350 + aH);
     	}
-    	
+
     	public void createAccount(JFrame frame) {
-    	// Ensure this method runs on EDT (Event Dispatch Thread for stability of program)
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-        frame.setTitle("AmnesicChat - Create Account");
+    	    SwingUtilities.invokeLater(() -> {
+    	        frame.setTitle("AmnesicChat - Create Account");
 
-        // Base size for the window to equally show storage devices.
-        List<String> availableDevices = getAvailableStorageDevices();
-        int aD = availableDevices.size();
+    	        // Fetch available storage devices using OSHI
+    	        List<String> deviceNames = getStorageDeviceNames();
 
-        // Calculate additional height based on the number of devices for height optimisation.
-        frameUpdate(frame, aD);
+    	        // Mock serial numbers for each device
+    	        List<String> serialNumbers = deviceNames.stream()
+    	                .map(device -> "Serial-" + device.hashCode()); 
+    	                .collect(Collectors.toList());
 
-        frame.getContentPane().removeAll();
+    	        // A map to associate disk names with their serial numbers
+    	        Map<String, String> diskToSerialMap = new HashMap<>();
+    	        for (int i = 0; i < deviceNames.size(); i++) {
+    	            diskToSerialMap.put(deviceNames.get(i), serialNumbers.get(i));
+    	        }
 
-        // Create a panel for creating account
-        JPanel createAccountPanel = new JPanel();
-        createAccountPanel.setLayout(new BoxLayout(createAccountPanel, BoxLayout.Y_AXIS));
-        createAccountPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20)); // Add padding
+    	        frame.getContentPane().removeAll();
 
-        // Header label
-        JLabel headerLabel = new JLabel("Create Device Lock", SwingConstants.CENTER);
-        headerLabel.setFont(new Font("SansSerif", Font.BOLD, 20));
-        headerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        createAccountPanel.add(headerLabel);
+    	        // Main panel
+    	        JPanel createAccountPanel = new JPanel();
+    	        createAccountPanel.setLayout(new BoxLayout(createAccountPanel, BoxLayout.Y_AXIS));
+    	        createAccountPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        createAccountPanel.add(Box.createVerticalStrut(10)); // Add spacing
+    	        // Header and instruction labels
+    	        JLabel headerLabel = new JLabel("Create Device Lock", SwingConstants.CENTER);
+    	        headerLabel.setFont(new Font("SansSerif", Font.BOLD, 20));
+    	        headerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+    	        createAccountPanel.add(headerLabel);
 
-        // Instruction label
-        JLabel instructionLabel = new JLabel(
-                "<html>Choose which storage devices you want to use as verification.<br>"
-                        + "The storage devices selected are required to unlock your account.<br>"
-                        + "It is not recommended to use your USB as the only device lock.</html>",
-                SwingConstants.CENTER);
-        instructionLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
-        instructionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        createAccountPanel.add(instructionLabel);
+    	        createAccountPanel.add(Box.createVerticalStrut(10)); // Spacing
 
-        createAccountPanel.add(Box.createVerticalStrut(10));
+    	        JLabel instructionLabel = new JLabel(
+    	            "<html>Select which storage devices you want to use as verification.<br>"
+    	            + "These devices will be required to unlock your account.</html>",
+    	            SwingConstants.CENTER);
+    	        instructionLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+    	        instructionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+    	        createAccountPanel.add(instructionLabel);
+    	        createAccountPanel.add(Box.createVerticalStrut(20)); // Spacing
 
-        // Strict mode panel
-        JPanel strictModePanel = new JPanel();
-        strictModePanel.setLayout(new BoxLayout(strictModePanel, BoxLayout.X_AXIS));
-        strictModePanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+    	        // Panel for device toggles
+    	        JPanel devicePanel = new JPanel();
+    	        devicePanel.setLayout(new GridLayout(0, 1, 10, 10));  // Grid layout for device toggles
 
-        JLabel strictModeLabel = new JLabel("Strict Mode: ");
-        strictModeLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
-        strictModePanel.add(strictModeLabel);
+    	        // List to keep track of selected serial numbers
+    	        List<String> selectedSerials = new ArrayList<>();
 
-        JRadioButton yesButton = new JRadioButton("YES");
-        JRadioButton noButton = new JRadioButton("NO", true); // Default to "NO"
-        ButtonGroup strictModeGroup = new ButtonGroup();
-        strictModeGroup.add(yesButton);
-        strictModeGroup.add(noButton);
+    	        // Displaying each storage device on the UI
+    	        for (String deviceName : deviceNames) {
+    	            JToggleButton deviceToggleButton = new JToggleButton(deviceName);
 
-        // Add tooltips on hover to explain what strict mode does
-        yesButton.setToolTipText("Enables Strict Mode, which locks your account to specific devices. If the devices are lost or damaged, the account cannot be recovered.");
-        noButton.setToolTipText("Disables Strict Mode. This allows recovery of your account if you lose access to the specific devices.");
+    	            // Add action listener to toggle button
+    	            deviceToggleButton.addActionListener(e -> {
+    	                if (deviceToggleButton.isSelected()) {
+    	                    // Add the corresponding serial number to the list
+    	                    selectedSerials.add(diskToSerialMap.get(deviceName));
+    	                } else {
+    	                    // Remove the serial number from the list if deselected
+    	                    selectedSerials.remove(diskToSerialMap.get(deviceName));
+    	                }
+    	            });
 
-        strictModePanel.add(yesButton);
-        strictModePanel.add(Box.createHorizontalStrut(10)); // Add spacing
-        strictModePanel.add(noButton);
-        createAccountPanel.add(strictModePanel);
+    	            devicePanel.add(deviceToggleButton);
+    	        }
 
-        // Warning message
-        JLabel warningLabel = new JLabel(
-                "<html><i>STRICT MODE IS NOT RECOMMENDED.<br>"
-                        + "IF THE DEVICE(S) YOU ASSIGN GET DAMAGED OR LOST,<br>"
-                        + "THE ACCOUNT WILL NEVER BE RECOVERED EVER.</i></html>",
-                SwingConstants.CENTER);
-        warningLabel.setFont(new Font("SansSerif", Font.ITALIC, 12));
-        warningLabel.setForeground(Color.RED);
-        warningLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        createAccountPanel.add(Box.createVerticalStrut(10)); // Add spacing
-        createAccountPanel.add(warningLabel);
+    	        createAccountPanel.add(devicePanel);
+    	        createAccountPanel.add(Box.createVerticalStrut(20)); // Spacing
 
-        createAccountPanel.add(Box.createVerticalStrut(20)); // Add spacing
+    	        // Continue button
+    	        JButton continueButton = new JButton("Continue");
+    	        continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+    	        continueButton.addActionListener(e -> {
+    	            // Hash the serial numbers, sort them, and pass them to the next function
+    	            List<String> hashedSerials = selectedSerials.stream()
+    	                .map(this::hashSHA512)
+    	                .sorted()
+    	                .collect(Collectors.toList());
 
-        // Device toggle buttons (for devices available)
-        JPanel devicePanel = new JPanel();
-        devicePanel.setLayout(new GridLayout(0, 1, 10, 10));  // Grid layout for device toggle buttons
+    	            // Pass the sorted hashed serials to the next function
+    	            insertGPGIdentity(frame, hashedSerials);
+    	        });
 
-        // Create an array to store the toggled states
-        List<JToggleButton> toggleButtons = new ArrayList<>();
+    	        createAccountPanel.add(continueButton);
+    	        createAccountPanel.add(Box.createVerticalStrut(10)); // Spacing
 
-        for (String device : availableDevices) {
-            JToggleButton deviceToggleButton = new JToggleButton(device);
-            deviceToggleButton.setToolTipText("Click to select " + device);
-            deviceToggleButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+    	        // Back button to return to the main menu
+    	        JButton backButton = new JButton("Back");
+    	        backButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+    	        backButton.addActionListener(e -> mainMenu(frame));
+    	        createAccountPanel.add(backButton);
 
-            // Add the toggle button to the list
-            toggleButtons.add(deviceToggleButton);
-            devicePanel.add(deviceToggleButton);
-        }
+    	        frame.getContentPane().add(createAccountPanel, BorderLayout.CENTER);
 
-        createAccountPanel.add(devicePanel);
-        createAccountPanel.add(Box.createVerticalStrut(20)); // Add spacing
+    	        frame.revalidate();
+    	        frame.repaint();
+    	    });
+    	}
 
-        // Continue button
-        JButton continueButton = new JButton("Continue");
-        continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        continueButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                insertGPGIdentity(frame);
-            }
-        });
-        createAccountPanel.add(continueButton);
-        createAccountPanel.add(Box.createVerticalStrut(10)); // Add spacing
-        // Back button (to go back to the main menu)
-        JButton backButton = new JButton("Back");
-        backButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        backButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                mainMenu(frame);  // Go back to main menu
-            }
-        });
-        createAccountPanel.add(backButton);
+    	// Fetch storage device names using OSHI
+    	private List<String> getStorageDeviceNames() {
+    	    List<String> deviceNames = new ArrayList<>();
+    	    SystemInfo systemInfo = new SystemInfo();
+    	    oshi.hardware.HardwareAbstractionLayer hardware = systemInfo.getHardware();
+    	    List<HWDiskStore> diskStores = hardware.getDiskStores();
 
-        JPanel modeSelectionPanel = new JPanel();
-        modeSelectionPanel.setLayout(new BoxLayout(modeSelectionPanel, BoxLayout.X_AXIS));
+    	    // Iterate through each disk and add its name to the list, filtering out logical volumes
+    	    for (HWDiskStore disk : diskStores) {
+    	        String diskName = disk.getModel();  // Get the model of the disk (e.g., "Samsung 970 Evo")
+    	        
+    	        // Filter out logical volumes or devices with names that suggest they are not physical
+    	        if (!isLogicalVolume(diskName)) {
+    	            deviceNames.add(diskName);
+    	        }
+    	    }
 
-        JLabel modeLabel = new JLabel("Choose Device Source: ");
-        modeLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
-        modeSelectionPanel.add(modeLabel);
+    	    if (deviceNames.isEmpty()) {
+    	        deviceNames.add("No devices found.");
+    	    }
 
-        // Radio buttons for mode selection
-        JRadioButton hardwareRadioButton = new JRadioButton("Hardware Info", true);
-        JRadioButton fileSystemRadioButton = new JRadioButton("File System Roots");
+    	    return deviceNames;
+    	}
 
-        ButtonGroup modeGroup = new ButtonGroup();
-        modeGroup.add(hardwareRadioButton);
-        modeGroup.add(fileSystemRadioButton);
+    	// Function to check if the device name suggests it is a logical volume
+    	private boolean isLogicalVolume(String deviceName) {
+    	    // Check if the device name contains typical logical volume keywords
+    	    String[] logicalKeywords = {"logical", "volume", "raid", "virtual", "part", "mapper", "md"};
+    	    for (String keyword : logicalKeywords) {
+    	        if (deviceName.toLowerCase().contains(keyword)) {
+    	            return true; // It's likely a logical volume
+    	        }
+    	    }
+    	    return false; // Otherwise, assume it's a physical device
+    	}
 
-        
-        // Action listeners for each radio button to switch modes
-        hardwareRadioButton.addActionListener(e -> {
-            useHardwareInfoMode = true;
-            updateDeviceList(createAccountPanel);
-            frameUpdate(frame, aD);
-        });
-
-        fileSystemRadioButton.addActionListener(e -> {
-            useHardwareInfoMode = false;
-            updateDeviceList(createAccountPanel);
-            frameUpdate(frame, aD);
-        });
-
-        // Add the radio buttons to the mode selection panel
-        modeSelectionPanel.add(hardwareRadioButton);
-        modeSelectionPanel.add(fileSystemRadioButton);
-        createAccountPanel.add(Box.createVerticalStrut(20)); // Add spacing
-        createAccountPanel.add(modeSelectionPanel);
-        
-        // Add this panel and contents to the frame
-        frame.getContentPane().add(createAccountPanel, BorderLayout.CENTER);
-       
-        // Refresh the frame
-        frame.revalidate();
-        frame.repaint();
-    }
-        });
-    }
-    // Method to update the navigation buttons' enable/disable state
-    public void updateNavigationButtons(JButton backButton, JButton nextButton, int currentPage, int totalPages) {
-        backButton.setEnabled(currentPage > 0);
-        nextButton.setEnabled(currentPage < totalPages - 1);
-    }
-
+    	// Helper function to hash serial numbers with SHA-512
+    	private String hashSHA512(String input) {
+    	    try {
+    	        MessageDigest digest = MessageDigest.getInstance("SHA-512");
+    	        byte[] encodedHash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+    	        // Convert byte array to hex string
+    	        StringBuilder hexString = new StringBuilder();
+    	        for (byte b : encodedHash) {
+    	            String hex = Integer.toHexString(0xff & b);
+    	            if (hex.length() == 1) {
+    	                hexString.append('0');
+    	            }
+    	            hexString.append(hex);
+    	        }
+    	        return hexString.toString();
+    	    } catch (NoSuchAlgorithmException e) {
+    	        throw new RuntimeException("SHA-512 algorithm not found", e);
+    	    }
+    	}
 
     public void mainMenu(JFrame frame) {
         // Ensure this method runs on EDT (Event Dispatch Thread for stability of program)
@@ -1399,9 +1975,6 @@ public class App {
                         }
                     }
                 });
-
-                // Set frame visible
-                frame.setVisible(true);
             }
         });
     }
