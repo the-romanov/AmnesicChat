@@ -37,17 +37,22 @@ import java.security.NoSuchAlgorithmException;
 import java.util.stream.Collectors;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.io.InputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
-
-
 
 public class App {
 	
+	//UI Defaults
+	public URL fileButtonIconURL = getClass().getResource("/images/File.png");
 	public URL labelURL = getClass().getResource("/images/AmnesicLabel.png");
     private JFrame frame; //JFrame is private so that we can isolate the variable to prevent potential tampering.
-    private boolean useHardwareInfoMode = true; // Flag to switch between modes
     public int baseWidth = 650;
     public int baseHeight = 350;	
+    
+    // Variables for account creation
+    public boolean strictMode = false; // Enforce strict account protection
+    public List<String> hashedSerials = null; //Device ID encryption key
     
     public App() {
         frame = new JFrame("AmnesicChat");
@@ -1091,9 +1096,15 @@ public void directoryServer(JFrame frame) {
             continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);
             continueButton.addActionListener(e -> createPassword(frame));
 
+            JButton backButton = new JButton("Back");
+            backButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+            backButton.addActionListener(e -> secondGPGIdentity(frame)); // Back button action listener
+
             footerPanel.add(navigationPanel);
             footerPanel.add(Box.createVerticalStrut(10));
-            footerPanel.add(continueButton);
+            footerPanel.add(continueButton); // Add Continue button first
+            footerPanel.add(Box.createVerticalStrut(5));
+            footerPanel.add(backButton); // Add Back button below Continue
             frame.add(footerPanel, BorderLayout.SOUTH);
 
             // Load Initial Modules
@@ -1181,186 +1192,175 @@ public void directoryServer(JFrame frame) {
             moduleListPanel.repaint();
         }
         
-    	public void secondGPGIdentity(JFrame frame) {
-    	    SwingUtilities.invokeLater(() -> {
-    	        frame.setTitle("AmnesicChat - Create GPG Identity");
-    	        frame.setSize(700, 450);
-    	        frame.getContentPane().removeAll();
-    	        frame.setLayout(new BorderLayout());
+        public void secondGPGIdentity(JFrame frame) {
+            SwingUtilities.invokeLater(() -> {
+                frame.setTitle("AmnesicChat - Create GPG Identity");
+                frame.setSize(700, 450);
+                frame.getContentPane().removeAll();
+                frame.setLayout(new BorderLayout());
 
-    	        // Main panel setup
-    	        JPanel mainPanel = new JPanel();
-    	        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
-    	        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 50, 20, 50));
-    	        frame.add(mainPanel, BorderLayout.CENTER);
+                // Main panel setup
+                JPanel mainPanel = new JPanel();
+                mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+                mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 50, 20, 50));
+                frame.add(mainPanel, BorderLayout.CENTER);
 
-    	        // Header
-    	        JLabel headerLabel = new JLabel("Create GPG Identity", SwingConstants.CENTER);
-    	        headerLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
-    	        headerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-    	        mainPanel.add(headerLabel);
+                // Header
+                JLabel headerLabel = new JLabel("Create GPG Identity", SwingConstants.CENTER);
+                headerLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
+                headerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+                mainPanel.add(headerLabel);
 
-    	        mainPanel.add(Box.createVerticalStrut(10));
+                mainPanel.add(Box.createVerticalStrut(10));
 
-    	        JLabel subHeaderLabel = new JLabel(
-    	                "<html>It is recommended to use a pseudo identity. Do not use your real identity unless necessary.<br>Hover over the text boxes and tooltip for more.</html>",
-    	                SwingConstants.CENTER);
-    	        subHeaderLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
-    	        subHeaderLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-    	        mainPanel.add(subHeaderLabel);
+                JLabel subHeaderLabel = new JLabel(
+                        "<html>It is recommended to use a pseudo identity. Do not use your real identity unless necessary.<br>Hover over the text boxes and tooltip for more.</html>",
+                        SwingConstants.CENTER);
+                subHeaderLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+                subHeaderLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+                mainPanel.add(subHeaderLabel);
 
-    	        mainPanel.add(Box.createVerticalStrut(20));
+                mainPanel.add(Box.createVerticalStrut(20));
 
-    	        // Form panel
-    	        JPanel formPanel = new JPanel();
-    	        formPanel.setLayout(new GridBagLayout());
-    	        GridBagConstraints gbc = new GridBagConstraints();
-    	        gbc.insets = new Insets(10, 10, 10, 10);
-    	        gbc.fill = GridBagConstraints.HORIZONTAL;
+                // Form panel
+                JPanel formPanel = new JPanel();
+                formPanel.setLayout(new GridBagLayout());
+                GridBagConstraints gbc = new GridBagConstraints();
+                gbc.insets = new Insets(10, 10, 10, 10);
+                gbc.fill = GridBagConstraints.HORIZONTAL;
 
-    	        // Algorithm field
-    	        gbc.gridx = 0;
-    	        gbc.gridy = 0;
-    	        frame.add(mainPanel, BorderLayout.CENTER);
-    	        JLabel algorithmLabel = new JLabel("Algorithm:");
-    	        algorithmLabel.setToolTipText("Select the encryption algorithm (e.g., RSA, ECC, DSA).");
-    	        formPanel.add(algorithmLabel, gbc);
-    	        gbc.gridx = 1;
-    	        String[] algorithms = {"RSA", "ECC", "DSA"};
-    	        JComboBox<String> algorithmComboBox = new JComboBox<>(algorithms);
-    	        algorithmComboBox.setSelectedIndex(-1); // No default selection
-    	        formPanel.add(algorithmComboBox, gbc);
+                // Algorithm field
+                gbc.gridx = 0;
+                gbc.gridy = 0;
+                JLabel algorithmLabel = new JLabel("Algorithm:");
+                algorithmLabel.setToolTipText("Select the encryption algorithm (e.g., RSA, ECC, DSA).");
+                formPanel.add(algorithmLabel, gbc);
+                gbc.gridx = 1;
+                String[] algorithms = {"RSA", "ECC", "DSA"};
+                JComboBox<String> algorithmComboBox = new JComboBox<>(algorithms);
+                algorithmComboBox.setSelectedIndex(-1); // No default selection
+                formPanel.add(algorithmComboBox, gbc);
 
-    	        // Key size field
-    	        gbc.gridx = 0;
-    	        gbc.gridy = 1;
-    	        JLabel keySizeLabel = new JLabel("Key Size:");
-    	        keySizeLabel.setToolTipText("Select the key size (e.g., 2048, 4096).");
-    	        formPanel.add(keySizeLabel, gbc);
-    	        gbc.gridx = 1;
-    	        JComboBox<String> keySizeComboBox = new JComboBox<>();
-    	        formPanel.add(keySizeComboBox, gbc);
+                // Key size field
+                gbc.gridx = 0;
+                gbc.gridy = 1;
+                JLabel keySizeLabel = new JLabel("Key Size:");
+                keySizeLabel.setToolTipText("Select the key size (e.g., 2048, 4096).");
+                formPanel.add(keySizeLabel, gbc);
+                gbc.gridx = 1;
+                JComboBox<String> keySizeComboBox = new JComboBox<>();
+                formPanel.add(keySizeComboBox, gbc);
 
-    	        // Comments field
-    	        gbc.gridx = 0;
-    	        gbc.gridy = 2;
-    	        JLabel commentsLabel = new JLabel("Comments:");
-    	        commentsLabel.setToolTipText("Optional comments for the GPG key.");
-    	        formPanel.add(commentsLabel, gbc);
-    	        gbc.gridx = 1;
-    	        JTextField commentsField = new JTextField(20);
-    	        formPanel.add(commentsField, gbc);
+                // Comments field
+                gbc.gridx = 0;
+                gbc.gridy = 2;
+                JLabel commentsLabel = new JLabel("Comments:");
+                commentsLabel.setToolTipText("Optional comments for the GPG key.");
+                formPanel.add(commentsLabel, gbc);
+                gbc.gridx = 1;
+                JTextField commentsField = new JTextField(20);
+                formPanel.add(commentsField, gbc);
 
-    	        // Export keys field
-    	        gbc.gridx = 0;
-    	        gbc.gridy = 3;
-    	        JLabel exportKeysLabel = new JLabel("Export Keys?");
-    	        exportKeysLabel.setToolTipText("Choose whether to export the keys (Both, Secret Only, Public Only, None).");
-    	        formPanel.add(exportKeysLabel, gbc);
-    	        gbc.gridx = 1;
-    	        String[] exportOptions = {"BOTH", "SECRET ONLY", "PUBLIC ONLY", "NONE"};
-    	        JComboBox<String> exportKeysComboBox = new JComboBox<>(exportOptions);
-    	        exportKeysComboBox.setSelectedIndex(-1); // No default selection
-    	        formPanel.add(exportKeysComboBox, gbc);
+                // Export keys field
+                gbc.gridx = 0;
+                gbc.gridy = 3;
+                JLabel exportKeysLabel = new JLabel("Export Keys?");
+                exportKeysLabel.setToolTipText("Choose whether to export the keys (Both, Secret Only, Public Only, None).");
+                formPanel.add(exportKeysLabel, gbc);
+                gbc.gridx = 1;
+                String[] exportOptions = {"BOTH", "SECRET ONLY", "PUBLIC ONLY", "NONE"};
+                JComboBox<String> exportKeysComboBox = new JComboBox<>(exportOptions);
+                exportKeysComboBox.setSelectedIndex(-1); // No default selection
+                formPanel.add(exportKeysComboBox, gbc);
 
-    	        // Add the form panel to the main panel
-    	        mainPanel.add(formPanel);
+                mainPanel.add(formPanel);
 
-    	        // Warning panel
-    	        JPanel warningPanel = new JPanel();
-    	        warningPanel.setLayout(new BoxLayout(warningPanel, BoxLayout.Y_AXIS));
-    	        warningPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-    	        mainPanel.add(warningPanel);
-    	        frame.add(mainPanel, BorderLayout.CENTER);
-    	        mainPanel.add(Box.createVerticalStrut(20));
+                // Warning panel
+                JPanel warningPanel = new JPanel();
+                warningPanel.setLayout(new BoxLayout(warningPanel, BoxLayout.Y_AXIS));
+                warningPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+                mainPanel.add(warningPanel);
 
-    	        // Add event listener for algorithm selection
-    	        algorithmComboBox.addActionListener(e -> {
-    	            String selectedAlgorithm = (String) algorithmComboBox.getSelectedItem();
-    	            keySizeComboBox.removeAllItems();
-    	            if ("RSA".equals(selectedAlgorithm)) {
-    	                keySizeComboBox.addItem("2048");
-    	                keySizeComboBox.addItem("3072");
-    	                keySizeComboBox.addItem("4096");
-    	            } else if ("ECC".equals(selectedAlgorithm)) {
-    	                keySizeComboBox.addItem("256"); // ECC commonly uses 256, 384, 521 bit
-    	                keySizeComboBox.addItem("384");
-    	                keySizeComboBox.addItem("521");
-    	            } else if ("DSA".equals(selectedAlgorithm)) {
-    	                keySizeComboBox.addItem("1024");
-    	                keySizeComboBox.addItem("2048");
-    	                keySizeComboBox.addItem("3072");
-    	            }
-    	            keySizeComboBox.setSelectedIndex(-1); // Reset selection
-    	        });
+                mainPanel.add(Box.createVerticalStrut(20));
 
-    	        // Continue button
-    	        frame.add(mainPanel, BorderLayout.CENTER);
-    	        JButton continueButton = new JButton("Continue");
-    	        continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-    	        continueButton.addActionListener(e -> {
-    	        	warningPanel.removeAll(); // Clear previous warnings
-    	            boolean hasErrors = false;
-    	            boolean hasWarnings = false;
-    	            StringBuilder warnings = new StringBuilder();
-    	            // Validate algorithm
-    	            String algorithm = (String) algorithmComboBox.getSelectedItem();
-    	            if (algorithm == null || algorithm.isEmpty()) {
-    	                JLabel errorLabel = new JLabel("Algorithm must be selected.");
-    	                errorLabel.setForeground(Color.RED);
-    	                warningPanel.add(errorLabel);
-    	                hasErrors = true;
-    	            }
+                // Populate key size options dynamically
+                algorithmComboBox.addActionListener(e -> {
+                    String selectedAlgorithm = (String) algorithmComboBox.getSelectedItem();
+                    keySizeComboBox.removeAllItems();
+                    if ("RSA".equals(selectedAlgorithm)) {
+                        keySizeComboBox.addItem("2048");
+                        keySizeComboBox.addItem("3072");
+                        keySizeComboBox.addItem("4096");
+                    } else if ("ECC".equals(selectedAlgorithm)) {
+                        keySizeComboBox.addItem("256");
+                        keySizeComboBox.addItem("384");
+                        keySizeComboBox.addItem("521");
+                    } else if ("DSA".equals(selectedAlgorithm)) {
+                        keySizeComboBox.addItem("1024");
+                        keySizeComboBox.addItem("2048");
+                        keySizeComboBox.addItem("3072");
+                    }
+                    keySizeComboBox.setSelectedIndex(-1); // Reset selection
+                });
 
-    	            // Validate key size
-    	            String keySize = (String) keySizeComboBox.getSelectedItem();
-    	            if (keySize == null || keySize.isEmpty()) {
-    	                JLabel errorLabel = new JLabel("Key size must be selected.");
-    	                errorLabel.setForeground(Color.RED);
-    	                warningPanel.add(errorLabel);
-    	                hasErrors = true;
-    	            }
-        	        frame.add(mainPanel, BorderLayout.CENTER);
-    	            // Validate export keys
-    	            String exportOption = (String) exportKeysComboBox.getSelectedItem();
-    	            if (exportOption == null || exportOption.equals(null)) {
-    	                JLabel errorLabel = new JLabel("Export key option must be selected.");
-    	                errorLabel.setForeground(Color.RED);
-    	                warningPanel.add(errorLabel);
-    	                hasErrors = true;
-    	            }
-    	            warningPanel.revalidate();
-    	            warningPanel.repaint();
-        	        frame.add(mainPanel, BorderLayout.CENTER);
-    	            // Handle results
-    	            if (hasErrors) {
-    	                JOptionPane.showMessageDialog(frame, "Please correct the highlighted errors.", "Validation Error",
-    	                        JOptionPane.ERROR_MESSAGE);
-    	            } else if (hasWarnings) {
-    	                // Show warnings popup
-    	                int choice = JOptionPane.showOptionDialog(frame,
-    	                        "Warnings:\n" + warnings.toString(),
-    	                        "Warnings",
-    	                        JOptionPane.YES_NO_OPTION,
-    	                        JOptionPane.WARNING_MESSAGE,
-    	                        null,
-    	                        new String[]{"Back", "Continue"},
-    	                        "Back");
-    	                if (choice == JOptionPane.NO_OPTION) {
-    	                    System.out.println("Continuing with warnings...");
-    	                    selectSecurityModules(frame);
-    	                }
-    	            } else {
-    	            	selectSecurityModules(frame);
-    	            }
-    	        });
-    	        mainPanel.add(continueButton);
-    	        frame.add(mainPanel);
-    	        frame.revalidate();
-    	        frame.repaint();
-    	    });
-    	}
+                // Continue button
+                JButton continueButton = new JButton("Continue");
+                continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+                continueButton.addActionListener(e -> {
+                    warningPanel.removeAll(); // Clear previous warnings
+                    boolean hasErrors = false;
 
+                    // Validate algorithm
+                    String algorithm = (String) algorithmComboBox.getSelectedItem();
+                    if (algorithm == null || algorithm.isEmpty()) {
+                        JLabel errorLabel = new JLabel("Algorithm must be selected.");
+                        errorLabel.setForeground(Color.RED);
+                        warningPanel.add(errorLabel);
+                        hasErrors = true;
+                    }
+
+                    // Validate key size
+                    String keySize = (String) keySizeComboBox.getSelectedItem();
+                    if (keySize == null || keySize.isEmpty()) {
+                        JLabel errorLabel = new JLabel("Key size must be selected.");
+                        errorLabel.setForeground(Color.RED);
+                        warningPanel.add(errorLabel);
+                        hasErrors = true;
+                    }
+
+                    // Validate export keys
+                    String exportOption = (String) exportKeysComboBox.getSelectedItem();
+                    if (exportOption == null || exportOption.isEmpty()) {
+                        JLabel errorLabel = new JLabel("Export key option must be selected.");
+                        errorLabel.setForeground(Color.RED);
+                        warningPanel.add(errorLabel);
+                        hasErrors = true;
+                    }
+
+                    warningPanel.revalidate();
+                    warningPanel.repaint();
+
+                    // Handle results
+                    if (hasErrors) {
+                        JOptionPane.showMessageDialog(frame, "Please correct the highlighted errors.", "Validation Error",
+                                JOptionPane.ERROR_MESSAGE);
+                    } else {
+                        selectSecurityModules(frame);
+                    }
+                });
+                mainPanel.add(continueButton);
+
+                // Back button
+                JButton backButton = new JButton("Back");
+                backButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+                backButton.addActionListener(e -> createGPGIdentity(frame));
+                mainPanel.add(backButton);
+
+                frame.add(mainPanel);
+                frame.revalidate();
+                frame.repaint();
+            });
+        }
     	
     	public void createGPGIdentity(JFrame frame) {
     	    SwingUtilities.invokeLater(() -> {
@@ -1385,7 +1385,7 @@ public void directoryServer(JFrame frame) {
 
     	        JLabel subHeaderLabel = new JLabel(
     	                "<html>It is recommended to use a pseudo identity. Do not use your real identity unless necessary.<br>" +
-    	                "Hover over the text boxes and tooltip for more.</html>",
+    	                        "Hover over the text boxes and tooltip for more.</html>",
     	                SwingConstants.CENTER);
     	        subHeaderLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
     	        subHeaderLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -1461,108 +1461,115 @@ public void directoryServer(JFrame frame) {
 
     	        mainPanel.add(Box.createVerticalStrut(20));
 
+    	        // Button panel
+    	        JPanel buttonPanel = new JPanel();
+    	        buttonPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 10));
+    	        mainPanel.add(buttonPanel);
+
+    	        // Back button
+    	        JButton backButton = new JButton("Back");
+    	        backButton.addActionListener(e -> insertGPGIdentity(frame));
+    	        buttonPanel.add(backButton);
+
     	        // Continue button
     	        JButton continueButton = new JButton("Continue");
-    	        continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);
     	        continueButton.addActionListener(e -> {
-    	        	boolean doVerify = false;
-    	        	
-    	        	if (doVerify) {
-    	            warningPanel.removeAll(); // Clear previous warnings
-    	            boolean hasErrors = false;
-    	            boolean hasWarnings = false;
-    	            StringBuilder warnings = new StringBuilder();
+    	            boolean doVerify = false;
 
-    	            // Validate name
-    	            String name = nameField.getText().trim();
-    	            if (name.length() < 4) {
-    	                JLabel errorLabel = new JLabel("Name must have at least 4 characters.");
-    	                errorLabel.setForeground(Color.RED);
-    	                warningPanel.add(errorLabel);
-    	                hasErrors = true;
-    	            }
+    	            if (doVerify) {
+    	                warningPanel.removeAll(); // Clear previous warnings
+    	                boolean hasErrors = false;
+    	                boolean hasWarnings = false;
+    	                StringBuilder warnings = new StringBuilder();
 
-    	            // Validate email
-    	            String email = emailField.getText().trim();
-    	            if (!email.matches(".+@.+")) {
-    	                JLabel errorLabel = new JLabel("Email must be valid (e.g., name@example.com).");
-    	                errorLabel.setForeground(Color.RED);
-    	                warningPanel.add(errorLabel);
-    	                hasErrors = true;
-    	            }
-
-    	            // Validate passphrase
-    	            char[] password = passphraseField.getPassword();
-    	            if (password.length == 0) {
-    	                warnings.append("- No password set. This is not recommended for security.\n");
-    	                hasWarnings = true;
-    	            } else if (password.length < 8) {
-    	                warnings.append("- Password is weak (less than 8 characters).\n");
-    	                hasWarnings = true;
-    	            }
-
-    	            // Validate expiry
-    	            String expiry = expiryField.getText().trim();
-    	            try {
-    	                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
-    	                LocalDate expiryDate = LocalDate.parse(expiry, formatter);
-    	                LocalDate today = LocalDate.now();
-    	                long daysBetween = ChronoUnit.DAYS.between(today, expiryDate);
-
-    	                if (!expiryDate.isAfter(today)) {
-    	                    JLabel errorLabel = new JLabel("Expiry date must be in the future.");
+    	                // Validate name
+    	                String name = nameField.getText().trim();
+    	                if (name.length() < 4) {
+    	                    JLabel errorLabel = new JLabel("Name must have at least 4 characters.");
     	                    errorLabel.setForeground(Color.RED);
     	                    warningPanel.add(errorLabel);
     	                    hasErrors = true;
-    	                } else if (daysBetween < 90) {
-    	                    warnings.append("- Expiry date is less than 90 days from now.\n");
+    	                }
+
+    	                // Validate email
+    	                String email = emailField.getText().trim();
+    	                if (!email.matches(".+@.+")) {
+    	                    JLabel errorLabel = new JLabel("Email must be valid (e.g., name@example.com).");
+    	                    errorLabel.setForeground(Color.RED);
+    	                    warningPanel.add(errorLabel);
+    	                    hasErrors = true;
+    	                }
+
+    	                // Validate passphrase
+    	                char[] password = passphraseField.getPassword();
+    	                if (password.length == 0) {
+    	                    warnings.append("- No password set. This is not recommended for security.\n");
+    	                    hasWarnings = true;
+    	                } else if (password.length < 8) {
+    	                    warnings.append("- Password is weak (less than 8 characters).\n");
     	                    hasWarnings = true;
     	                }
-    	            } catch (DateTimeParseException ex) {
-    	                JLabel errorLabel = new JLabel("Expiry date must be valid and in the format DD-MM-YYYY.");
-    	                errorLabel.setForeground(Color.RED);
-    	                warningPanel.add(errorLabel);
-    	                hasErrors = true;
-    	            }
 
-    	            warningPanel.revalidate();
-    	            warningPanel.repaint();
+    	                // Validate expiry
+    	                String expiry = expiryField.getText().trim();
+    	                try {
+    	                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+    	                    LocalDate expiryDate = LocalDate.parse(expiry, formatter);
+    	                    LocalDate today = LocalDate.now();
+    	                    long daysBetween = ChronoUnit.DAYS.between(today, expiryDate);
 
-    	            // Handle results
-    	            if (hasErrors) {
-    	                JOptionPane.showMessageDialog(frame, "Please correct the highlighted errors.", "Validation Error",
-    	                        JOptionPane.ERROR_MESSAGE);
-    	            } else if (hasWarnings) {
-    	                // Show warnings popup
-    	                int choice = JOptionPane.showOptionDialog(frame,
-    	                        "Warnings:\n" + warnings.toString(),
-    	                        "Warnings",
-    	                        JOptionPane.YES_NO_OPTION,
-    	                        JOptionPane.WARNING_MESSAGE,
-    	                        null,
-    	                        new String[]{"Back", "Continue"},
-    	                        "Back");
-    	                if (choice == JOptionPane.NO_OPTION) {
+    	                    if (!expiryDate.isAfter(today)) {
+    	                        JLabel errorLabel = new JLabel("Expiry date must be in the future.");
+    	                        errorLabel.setForeground(Color.RED);
+    	                        warningPanel.add(errorLabel);
+    	                        hasErrors = true;
+    	                    } else if (daysBetween < 90) {
+    	                        warnings.append("- Expiry date is less than 90 days from now.\n");
+    	                        hasWarnings = true;
+    	                    }
+    	                } catch (DateTimeParseException ex) {
+    	                    JLabel errorLabel = new JLabel("Expiry date must be valid and in the format DD-MM-YYYY.");
+    	                    errorLabel.setForeground(Color.RED);
+    	                    warningPanel.add(errorLabel);
+    	                    hasErrors = true;
+    	                }
+
+    	                warningPanel.revalidate();
+    	                warningPanel.repaint();
+
+    	                // Handle results
+    	                if (hasErrors) {
+    	                    JOptionPane.showMessageDialog(frame, "Please correct the highlighted errors.", "Validation Error",
+    	                            JOptionPane.ERROR_MESSAGE);
+    	                } else if (hasWarnings) {
+    	                    // Show warnings popup
+    	                    int choice = JOptionPane.showOptionDialog(frame,
+    	                            "Warnings:\n" + warnings.toString(),
+    	                            "Warnings",
+    	                            JOptionPane.YES_NO_OPTION,
+    	                            JOptionPane.WARNING_MESSAGE,
+    	                            null,
+    	                            new String[]{"Back", "Continue"},
+    	                            "Back");
+    	                    if (choice == JOptionPane.NO_OPTION) {
+    	                        secondGPGIdentity(frame);
+    	                    }
+    	                } else {
     	                    secondGPGIdentity(frame);
     	                }
     	            } else {
     	                secondGPGIdentity(frame);
     	            }
-    	        	} else {
-    	                secondGPGIdentity(frame);
-    	        	}
     	        });
-    	        mainPanel.add(continueButton);
+    	        buttonPanel.add(continueButton);
+
     	        frame.add(mainPanel);
     	        frame.revalidate();
     	        frame.repaint();
     	    });
     	}
     	
-    public void insertGPGIdentity(JFrame frame, List<String> hashedSerials) {
-    	    // Debugging: Print the hashed serials
-    	    System.out.println("Sorted and Hashed Serials:");
-    	    hashedSerials.forEach(System.out::println);
+    	public void insertGPGIdentity(JFrame frame) {
     	    SwingUtilities.invokeLater(() -> {
     	        frame.getContentPane().removeAll();
     	        frame.setTitle("AmnesicChat - GPG Identity");
@@ -1601,21 +1608,82 @@ public void directoryServer(JFrame frame) {
     	        fileChooserPanel.setLayout(new BoxLayout(fileChooserPanel, BoxLayout.X_AXIS));
 
     	        JTextField filePathField = new JTextField();
-    	        JButton browseButton = new JButton("...");
-    	        browseButton.setPreferredSize(new Dimension(40, 30));
+    	        JButton loadKeyButton = new JButton("..."); // Initially "..." for browsing
+    	        loadKeyButton.setPreferredSize(new Dimension(80, 30));
 
-    	        filePathField.setMaximumSize(new Dimension(Integer.MAX_VALUE, browseButton.getPreferredSize().height));
+    	        // Load the icon for the "..." button
+    	        if (fileButtonIconURL != null) {
+    	        	 ImageIcon originalIcon = new ImageIcon(fileButtonIconURL);
+                     Image scaledImage = originalIcon.getImage().getScaledInstance(40, 40, Image.SCALE_SMOOTH); // Resize image to 50x50
+                     ImageIcon resizedIcon = new ImageIcon(scaledImage);
+    	        	
+    	            loadKeyButton.setIcon(resizedIcon);
+    	            loadKeyButton.setText(""); // Clear text if icon is set
+    	        }
+
+    	        filePathField.setMaximumSize(new Dimension(Integer.MAX_VALUE, loadKeyButton.getPreferredSize().height));
 
     	        fileChooserPanel.add(filePathField);
     	        fileChooserPanel.add(Box.createHorizontalStrut(10)); // Add spacing
-    	        fileChooserPanel.add(browseButton);
+    	        fileChooserPanel.add(loadKeyButton);
+
+    	     // Create button
+    	        JButton createButton = new JButton("Create my own key");
+    	        createButton.setPreferredSize(new Dimension(200, 40));
+    	        createButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+    	        createButton.addActionListener(e -> {
+    	            if (filePathField.getText().isEmpty()) {
+    	                createGPGIdentity(frame);
+    	            } else {
+    	                String filePath = filePathField.getText();
+    	                if (validateGPGKey(filePath)) {
+    	                   // loadGPGKey(frame);
+    	                } else {
+    	                    JOptionPane.showMessageDialog(frame, "Invalid GPG key! Please select a valid secret key.",
+    	                            "Error", JOptionPane.ERROR_MESSAGE);
+    	                }
+    	            }
+    	        });
+    	        
+    	        // Change button text to "Load Key" when typing in the text field
+    	        filePathField.getDocument().addDocumentListener(new DocumentListener() {
+    	            @Override
+    	            public void insertUpdate(DocumentEvent e) {
+    	                updateButtonText();
+    	            }
+
+    	            @Override
+    	            public void removeUpdate(DocumentEvent e) {
+    	                updateButtonText();
+    	            }
+
+    	            @Override
+    	            public void changedUpdate(DocumentEvent e) {
+    	                updateButtonText();
+    	            }
+
+    	            private void updateButtonText() {
+    	                createButton.setText(filePathField.getText().isEmpty() ? "Create my own key" : "Load Key");
+    	            }
+    	        });
 
     	        // File chooser action listener
-    	        browseButton.addActionListener(e -> {
-    	            JFileChooser fileChooser = new JFileChooser();
-    	            int result = fileChooser.showOpenDialog(frame);
-    	            if (result == JFileChooser.APPROVE_OPTION) {
-    	                filePathField.setText(fileChooser.getSelectedFile().getAbsolutePath());
+    	        loadKeyButton.addActionListener(e -> {
+    	            if (filePathField.getText().isEmpty()) {
+    	                JFileChooser fileChooser = new JFileChooser();
+    	                fileChooser.setFileFilter(new FileNameExtensionFilter("PGP/GPG Files", "asc")); // Restrict to .asc files
+    	                int result = fileChooser.showOpenDialog(frame);
+    	                if (result == JFileChooser.APPROVE_OPTION) {
+    	                    filePathField.setText(fileChooser.getSelectedFile().getAbsolutePath());
+    	                }
+    	            } else {
+    	                String filePath = filePathField.getText();
+    	                if (validateGPGKey(filePath)) {
+    	                   // loadGPGKey(frame); // Call loadGPGKey if the key is valid
+    	                } else {
+    	                    JOptionPane.showMessageDialog(frame, "Invalid GPG key! Please select a valid secret key.",
+    	                            "Error", JOptionPane.ERROR_MESSAGE);
+    	                }
     	            }
     	        });
 
@@ -1623,11 +1691,7 @@ public void directoryServer(JFrame frame) {
 
     	        mainPanel.add(Box.createVerticalStrut(20)); // Add spacing
 
-    	        // Create button
-    	        JButton createButton = new JButton("Create my own key");
-    	        createButton.setPreferredSize(new Dimension(200, 40));
-    	        createButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-    	        createButton.addActionListener(e -> createGPGIdentity(frame));
+    	        
     	        mainPanel.add(createButton);
 
     	        // Back button
@@ -1644,24 +1708,20 @@ public void directoryServer(JFrame frame) {
     	    });
     	}
 
+    	public boolean validateGPGKey(String filePath) {
+    	    return true;
+    	}
+
     	public List<String> getAvailableStorageDevices() {
     	    List<String> devices = new ArrayList<>();
 
-    	    if (useHardwareInfoMode) {
     	        // Use hardware information (SystemInfo) to get devices
     	        SystemInfo systemInfo = new SystemInfo();
     	        List<HWDiskStore> diskStores = systemInfo.getHardware().getDiskStores();
 
     	        for (HWDiskStore diskStore : diskStores) {
     	            devices.add(diskStore.getName());
-    	        }
-    	    } else {
-    	        // Use file system roots (drives)
-    	        File[] roots = File.listRoots();
-    	        for (File root : roots) {
-    	            devices.add(root.getAbsolutePath());
-    	        }
-    	    }
+    	        } 	   
     	    return devices;
     	}
     	
@@ -1678,13 +1738,14 @@ public void directoryServer(JFrame frame) {
     	public void createAccount(JFrame frame) {
     	    SwingUtilities.invokeLater(() -> {
     	        frame.setTitle("AmnesicChat - Create Account");
+                frame.setSize(650, 450);
 
     	        // Fetch available storage devices using OSHI
     	        List<String> deviceNames = getStorageDeviceNames();
 
     	        // Mock serial numbers for each device
     	        List<String> serialNumbers = deviceNames.stream()
-    	                .map(device -> "Serial-" + device.hashCode()); 
+    	                .map(device -> "Serial-" + device.hashCode())
     	                .collect(Collectors.toList());
 
     	        // A map to associate disk names with their serial numbers
@@ -1707,16 +1768,65 @@ public void directoryServer(JFrame frame) {
     	        createAccountPanel.add(headerLabel);
 
     	        createAccountPanel.add(Box.createVerticalStrut(10)); // Spacing
-
+    	        
+    	        // Instruction label
     	        JLabel instructionLabel = new JLabel(
-    	            "<html>Select which storage devices you want to use as verification.<br>"
-    	            + "These devices will be required to unlock your account.</html>",
-    	            SwingConstants.CENTER);
+    	        		"<html>Choose which storage devices you want to use as verification.<br>"
+    	                        + "The storage devices selected are required to unlock your account.<br>"
+    	                        + "It is not recommended to use your USB as the only device lock.</html>",
+    	                SwingConstants.CENTER);
     	        instructionLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
     	        instructionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
     	        createAccountPanel.add(instructionLabel);
-    	        createAccountPanel.add(Box.createVerticalStrut(20)); // Spacing
+    	        createAccountPanel.add(Box.createVerticalStrut(10));
+    	        
+    	        // Warning message
+    	        JLabel warningLabel = new JLabel(
+    	                "<html><i>STRICT MODE IS NOT RECOMMENDED.<br>"
+    	                        + "IF THE DEVICE(S) YOU ASSIGN GET DAMAGED OR LOST,<br>"
+    	                        + "THE ACCOUNT WILL NEVER BE RECOVERED EVER.</i></html>",
+    	                SwingConstants.CENTER);
+    	        warningLabel.setFont(new Font("SansSerif", Font.ITALIC, 12));
+    	        warningLabel.setForeground(Color.RED);
+    	        warningLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+    	        createAccountPanel.add(Box.createVerticalStrut(10)); // Add spacing
+    	        createAccountPanel.add(warningLabel);
+    	        createAccountPanel.add(Box.createVerticalStrut(20)); // Add spacing
+    	        
+    	        // Strict mode panel
+    	        JPanel strictModePanel = new JPanel();
+    	        strictModePanel.setLayout(new BoxLayout(strictModePanel, BoxLayout.X_AXIS));
+    	        strictModePanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+    	        JLabel strictModeLabel = new JLabel("Strict Mode: ");
+    	        strictModeLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+    	        strictModePanel.add(strictModeLabel);
+    	        JRadioButton yesButton = new JRadioButton("YES");
+    	        JRadioButton noButton = new JRadioButton("NO", true); // Default to "NO"
+    	        ButtonGroup strictModeGroup = new ButtonGroup();
+    	        strictModeGroup.add(yesButton);
+    	        strictModeGroup.add(noButton);
+    	        // Add tooltips on hover to explain what strict mode does
+    	        yesButton.setToolTipText("Enables Strict Mode, which locks your account to specific devices. If the devices are lost or damaged, the account cannot be recovered.");
+    	        noButton.setToolTipText("Disables Strict Mode. This allows recovery of your account if you lose access to the specific devices.");
+    	        
+    	     // Add action listeners to update the strictMode variable
+    	        yesButton.addItemListener(e -> {
+    	            if (e.getStateChange() == ItemEvent.SELECTED) {
+    	                strictMode = true; // Set strictMode to true when "YES" is selected
+    	            }
+    	        });
 
+    	        noButton.addItemListener(e -> {
+    	            if (e.getStateChange() == ItemEvent.SELECTED) {
+    	                strictMode = false; // Set strictMode to false when "NO" is selected
+    	            }
+    	        });
+    	        
+    	        strictModePanel.add(yesButton);
+    	        strictModePanel.add(Box.createHorizontalStrut(10)); // Add spacing
+    	        strictModePanel.add(noButton);
+    	        createAccountPanel.add(strictModePanel);
+    	        
     	        // Panel for device toggles
     	        JPanel devicePanel = new JPanel();
     	        devicePanel.setLayout(new GridLayout(0, 1, 10, 10));  // Grid layout for device toggles
@@ -1750,13 +1860,13 @@ public void directoryServer(JFrame frame) {
     	        continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);
     	        continueButton.addActionListener(e -> {
     	            // Hash the serial numbers, sort them, and pass them to the next function
-    	            List<String> hashedSerials = selectedSerials.stream()
+    	            hashedSerials = selectedSerials.stream()
     	                .map(this::hashSHA512)
     	                .sorted()
     	                .collect(Collectors.toList());
 
     	            // Pass the sorted hashed serials to the next function
-    	            insertGPGIdentity(frame, hashedSerials);
+    	            insertGPGIdentity(frame);
     	        });
 
     	        createAccountPanel.add(continueButton);
@@ -1837,6 +1947,7 @@ public void directoryServer(JFrame frame) {
             @Override
             public void run() {
                 // Initialise the frame
+    	        frame.getContentPane().removeAll();
                 frame.setTitle("AmnesicChat - Account");
                 frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                 frame.setSize(650, 450);
@@ -1900,7 +2011,6 @@ public void directoryServer(JFrame frame) {
                 JTextField filePathField = new JTextField();
 
                 // Create the browse button with resized image icon
-                URL fileButtonIconURL = getClass().getResource("/images/File.png");
                 if (fileButtonIconURL != null) {
                     ImageIcon originalIcon = new ImageIcon(fileButtonIconURL);
                     Image scaledImage = originalIcon.getImage().getScaledInstance(40, 40, Image.SCALE_SMOOTH); // Resize image to 50x50
@@ -1948,7 +2058,8 @@ public void directoryServer(JFrame frame) {
                     }
                 });
                 mainPanel.add(createAccountButton);
-
+                frame.revalidate();
+    	        frame.repaint();
                 // Listen to the text field for changes
                 filePathField.getDocument().addDocumentListener(new DocumentListener() {
                     @Override
