@@ -3,6 +3,7 @@ import java.awt.event.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.lang.ClassNotFoundException;
 import java.lang.NoSuchMethodException;
@@ -40,6 +41,8 @@ import java.io.InputStreamReader;
 import java.io.InputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
+
+import org.pgpainless.PGPainless;
 
 public class App {
 	
@@ -1569,6 +1572,95 @@ public void directoryServer(JFrame frame) {
     	    });
     	}
     	
+public static void loadGPGKey(JFrame frame, File gpgKeyFile) {
+    frame.getContentPane().removeAll();
+    
+    // TO FIX
+        // Set the title and layout of the frame
+        frame.setTitle("GPG Identity Loaded");
+        frame.setLayout(new BorderLayout());
+
+        // Create a panel for the content
+        JPanel contentPanel = new JPanel();
+        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+        contentPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        // Add the GPG Identity Loaded header
+        JLabel headerLabel = new JLabel("GPG Identity Loaded", SwingConstants.CENTER);
+        headerLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        headerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        contentPanel.add(headerLabel);
+
+        contentPanel.add(Box.createRigidArea(new Dimension(0, 15))); // Spacer
+
+        // Parse the GPG key file to extract details
+        String name = "Unknown";
+        String email = "Unknown";
+        String expiry = "Unknown";
+        String algorithm = "Unknown";
+        String comments = "Unknown";
+        String fingerprint = "Unknown";
+
+        if (gpgKeyFile != null && gpgKeyFile.exists()) {
+            try (BufferedReader reader = new BufferedReader(new FileReader(gpgKeyFile))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.startsWith("Name:")) {
+                    
+                    } else if (line.startsWith("E-mail:")) {
+                      
+                    } else if (line.startsWith("Expiry:")) {
+       
+                    } else if (line.startsWith("Algorithm:")) {
+                      
+                    } else if (line.startsWith("Comments:")) {
+                     
+                    } else if (line.startsWith("Fingerprint:")) {
+                       
+                    }
+                }
+            } catch (IOException e) {
+                JOptionPane.showMessageDialog(frame, "Failed to read GPG key file: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        } else {
+            JOptionPane.showMessageDialog(frame, "GPG key file not found.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+
+        // Add information labels
+        String[] labels = {
+            "Name: " + name,
+            "E-mail: " + email,
+            "Expiry: " + expiry,
+            "Algorithm: " + algorithm,
+            "Comments: " + comments,
+            "Fingerprint: " + fingerprint
+        };
+
+        for (String text : labels) {
+            JLabel label = new JLabel(text);
+            label.setFont(new Font("Arial", Font.PLAIN, 14));
+            label.setAlignmentX(Component.CENTER_ALIGNMENT);
+            contentPanel.add(label);
+            contentPanel.add(Box.createRigidArea(new Dimension(0, 10))); // Spacer
+        }
+
+        // Add the buttons panel
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 0));
+
+        JButton returnButton = new JButton("Return");
+        JButton continueButton = new JButton("Continue");
+
+        buttonPanel.add(returnButton);
+        buttonPanel.add(continueButton);
+
+        // Add components to the frame
+        frame.add(contentPanel, BorderLayout.CENTER);
+        frame.add(buttonPanel, BorderLayout.SOUTH);
+        frame.revalidate();
+        frame.repaint();
+    }
+
     	public void insertGPGIdentity(JFrame frame) {
     	    SwingUtilities.invokeLater(() -> {
     	        frame.getContentPane().removeAll();
@@ -1632,12 +1724,12 @@ public void directoryServer(JFrame frame) {
     	        createButton.setPreferredSize(new Dimension(200, 40));
     	        createButton.setAlignmentX(Component.CENTER_ALIGNMENT);
     	        createButton.addActionListener(e -> {
-    	            if (filePathField.getText().isEmpty()) {
-    	                createGPGIdentity(frame);
+    	            String filePath = filePathField.getText();
+    	            if (filePath.isEmpty()) {
+    	                createGPGIdentity(frame); // Create a new GPG identity
     	            } else {
-    	                String filePath = filePathField.getText();
     	                if (validateGPGKey(filePath)) {
-    	                   // loadGPGKey(frame);
+    	                    loadGPGKey(frame, new File(filePath)); // Pass the file path as a File object
     	                } else {
     	                    JOptionPane.showMessageDialog(frame, "Invalid GPG key! Please select a valid secret key.",
     	                            "Error", JOptionPane.ERROR_MESSAGE);
@@ -1669,7 +1761,8 @@ public void directoryServer(JFrame frame) {
 
     	        // File chooser action listener
     	        loadKeyButton.addActionListener(e -> {
-    	            if (filePathField.getText().isEmpty()) {
+    	            String filePath = filePathField.getText();
+    	            if (filePath.isEmpty()) {
     	                JFileChooser fileChooser = new JFileChooser();
     	                fileChooser.setFileFilter(new FileNameExtensionFilter("PGP/GPG Files", "asc")); // Restrict to .asc files
     	                int result = fileChooser.showOpenDialog(frame);
@@ -1677,9 +1770,8 @@ public void directoryServer(JFrame frame) {
     	                    filePathField.setText(fileChooser.getSelectedFile().getAbsolutePath());
     	                }
     	            } else {
-    	                String filePath = filePathField.getText();
     	                if (validateGPGKey(filePath)) {
-    	                   // loadGPGKey(frame); // Call loadGPGKey if the key is valid
+    	                    loadGPGKey(frame, new File(filePath)); // Pass the file path as a File object
     	                } else {
     	                    JOptionPane.showMessageDialog(frame, "Invalid GPG key! Please select a valid secret key.",
     	                            "Error", JOptionPane.ERROR_MESSAGE);
