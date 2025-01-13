@@ -42,8 +42,6 @@ import java.io.InputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 
-import org.pgpainless.PGPainless;
-
 public class App {
 	
 	//UI Defaults
@@ -697,7 +695,7 @@ public void directoryServer(JFrame frame) {
     	        if (text.equals("JOIN A SERVER")) {
     	            button.addActionListener(new ActionListener() {
     	                public void actionPerformed(ActionEvent e) {
-    	                	createJoinServerUI(frame);
+    	                    createJoinServerUI(frame);
     	                }
     	            });
     	        }
@@ -707,6 +705,15 @@ public void directoryServer(JFrame frame) {
     	            button.addActionListener(new ActionListener() {
     	                public void actionPerformed(ActionEvent e) {
     	                    peerToPeerUI(frame); // Call peerToPeerUI
+    	                }
+    	            });
+    	        }
+
+    	        // Action listener for "CHANGE ACCOUNT" button
+    	        if (text.equals("CHANGE ACCOUNT")) {
+    	            button.addActionListener(new ActionListener() {
+    	                public void actionPerformed(ActionEvent e) {
+    	                    mainMenu(frame); // Call the mainMenu method to return to the main menu
     	                }
     	            });
     	        }
@@ -728,7 +735,6 @@ public void directoryServer(JFrame frame) {
     	    frame.revalidate();
     	    frame.repaint();
     	}
-
     	
     	public void firstTimeSetup(JFrame frame) {
 			// Clear frame
@@ -801,6 +807,7 @@ public void directoryServer(JFrame frame) {
     				// Clear frame
     				frame.getContentPane().removeAll();
     		        // Create the main panel to hold all components
+    	    	    frame.setSize(600, 400);
     		        JPanel panel = new JPanel();
     		        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
     		        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
@@ -860,145 +867,159 @@ public void directoryServer(JFrame frame) {
     		    }
     	
     	public void createPassword(JFrame frame) {
-            // Clear frame
-            frame.getContentPane().removeAll();
-            frame.setSize(600, 400);
-            frame.setLayout(new BorderLayout());
+    	    // Clear frame
+    	    frame.getContentPane().removeAll();
+    	    frame.setSize(600, 400);
+    	    frame.setLayout(new BorderLayout());
 
-            // Header Panel
-            JPanel headerPanel = new JPanel();
-            headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
-            headerPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+    	    // Header Panel
+    	    JPanel headerPanel = new JPanel();
+    	    headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
+    	    headerPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
-            JLabel headerLabel = new JLabel("Create Password", SwingConstants.CENTER);
-            headerLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
-            headerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-            headerPanel.add(headerLabel);
+    	    JLabel headerLabel = new JLabel("Create Password", SwingConstants.CENTER);
+    	    headerLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
+    	    headerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+    	    headerPanel.add(headerLabel);
 
-            JLabel descriptionLabel = new JLabel("<html>If you lose or forget the password, you will lose access to your account.<br>"
-                    + "Keep the password extremely safe! Nobody will help you to recover your account once you lose the password.</html>",
-                    SwingConstants.CENTER);
-            descriptionLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
-            descriptionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-            headerPanel.add(Box.createVerticalStrut(10));
-            headerPanel.add(descriptionLabel);
+    	    JLabel descriptionLabel = new JLabel("<html>If you lose or forget the password, you will lose access to your account.<br>"
+    	            + "Keep the password extremely safe! Nobody will help you to recover your account once you lose the password.</html>",
+    	            SwingConstants.CENTER);
+    	    descriptionLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+    	    descriptionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+    	    headerPanel.add(Box.createVerticalStrut(10));
+    	    headerPanel.add(descriptionLabel);
 
-            frame.add(headerPanel, BorderLayout.NORTH);
+    	    frame.add(headerPanel, BorderLayout.NORTH);
 
-            // Center Panel
-            JPanel centerPanel = new JPanel();
-            centerPanel.setLayout(new GridBagLayout());
-            GridBagConstraints gbc = new GridBagConstraints();
-            gbc.fill = GridBagConstraints.HORIZONTAL;
-            gbc.insets = new Insets(10, 10, 10, 10);
+    	    // Center Panel
+    	    JPanel centerPanel = new JPanel();
+    	    centerPanel.setLayout(new GridBagLayout());
+    	    GridBagConstraints gbc = new GridBagConstraints();
+    	    gbc.fill = GridBagConstraints.HORIZONTAL;
+    	    gbc.insets = new Insets(10, 10, 10, 10);
 
-            // Password Field
-            gbc.gridx = 0;
-            gbc.gridy = 0;
-            gbc.gridwidth = 2;
-            JLabel passwordLabel = new JLabel("Password:");
-            passwordLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
-            centerPanel.add(passwordLabel, gbc);
+    	    // Password Field
+    	    gbc.gridx = 0;
+    	    gbc.gridy = 0;
+    	    gbc.gridwidth = 2;
+    	    JLabel passwordLabel = new JLabel("Password:");
+    	    passwordLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+    	    centerPanel.add(passwordLabel, gbc);
 
-            gbc.gridx = 2;
-            gbc.gridy = 0;
-            gbc.gridwidth = 3;
-            JPasswordField passwordField = new JPasswordField(20);
-            centerPanel.add(passwordField, gbc);
+    	    gbc.gridx = 2;
+    	    gbc.gridy = 0;
+    	    gbc.gridwidth = 3;
+    	    JPasswordField passwordField = new JPasswordField(20);
+    	    centerPanel.add(passwordField, gbc);
 
-            // Encryption Methods
-            gbc.gridx = 0;
-            gbc.gridy = 1;
-            gbc.gridwidth = 2;
-            JLabel encryptionLabel = new JLabel("Encryption Method(s):");
-            encryptionLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
-            centerPanel.add(encryptionLabel, gbc);
+    	    // Encryption Methods
+    	    gbc.gridx = 0;
+    	    gbc.gridy = 1;
+    	    gbc.gridwidth = 2;
+    	    JLabel encryptionLabel = new JLabel("Encryption Method(s):");
+    	    encryptionLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+    	    centerPanel.add(encryptionLabel, gbc);
 
-            JPanel encryptionMethodsPanel = new JPanel();
-            encryptionMethodsPanel.setLayout(new GridLayout(2, 3, 5, 5));
-            JCheckBox aesCheckbox = new JCheckBox("AES");
-            JCheckBox serpentCheckbox = new JCheckBox("Serpent");
-            JCheckBox twofishCheckbox = new JCheckBox("Twofish");
-            JCheckBox camelliaCheckbox = new JCheckBox("Camellia");
-            JCheckBox kuzCheckbox = new JCheckBox("Kuznyechik");
+    	    JPanel encryptionMethodsPanel = new JPanel();
+    	    encryptionMethodsPanel.setLayout(new GridLayout(2, 3, 5, 5));
+    	    JCheckBox aesCheckbox = new JCheckBox("AES");
+    	    JCheckBox serpentCheckbox = new JCheckBox("Serpent");
+    	    JCheckBox twofishCheckbox = new JCheckBox("Twofish");
+    	    JCheckBox camelliaCheckbox = new JCheckBox("Camellia");
+    	    JCheckBox kuzCheckbox = new JCheckBox("Kuznyechik");
 
-            encryptionMethodsPanel.add(aesCheckbox);
-            encryptionMethodsPanel.add(serpentCheckbox);
-            encryptionMethodsPanel.add(twofishCheckbox);
-            encryptionMethodsPanel.add(camelliaCheckbox);
-            encryptionMethodsPanel.add(kuzCheckbox);
+    	    encryptionMethodsPanel.add(aesCheckbox);
+    	    encryptionMethodsPanel.add(serpentCheckbox);
+    	    encryptionMethodsPanel.add(twofishCheckbox);
+    	    encryptionMethodsPanel.add(camelliaCheckbox);
+    	    encryptionMethodsPanel.add(kuzCheckbox);
 
-            gbc.gridx = 2;
-            gbc.gridy = 1;
-            gbc.gridwidth = 3;
-            centerPanel.add(encryptionMethodsPanel, gbc);
+    	    gbc.gridx = 2;
+    	    gbc.gridy = 1;
+    	    gbc.gridwidth = 3;
+    	    centerPanel.add(encryptionMethodsPanel, gbc);
 
-            // Encryption Order
-            gbc.gridx = 0;
-            gbc.gridy = 2;
-            gbc.gridwidth = 2;
-            JLabel orderLabel = new JLabel("Encryption Order:");
-            orderLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
-            centerPanel.add(orderLabel, gbc);
+    	    // Encryption Order
+    	    gbc.gridx = 0;
+    	    gbc.gridy = 2;
+    	    gbc.gridwidth = 2;
+    	    JLabel orderLabel = new JLabel("Encryption Order:");
+    	    orderLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+    	    centerPanel.add(orderLabel, gbc);
 
-            DefaultListModel<String> orderListModel = new DefaultListModel<>();
-            JList<String> orderList = new JList<>(orderListModel);
-            orderList.setVisibleRowCount(5);
-            orderList.setFixedCellHeight(20);
-            orderList.setFixedCellWidth(100);
-            JScrollPane scrollPane = new JScrollPane(orderList);
+    	    DefaultListModel<String> orderListModel = new DefaultListModel<>();
+    	    JList<String> orderList = new JList<>(orderListModel);
+    	    orderList.setVisibleRowCount(5);
+    	    orderList.setFixedCellHeight(20);
+    	    orderList.setFixedCellWidth(100);
+    	    JScrollPane scrollPane = new JScrollPane(orderList);
 
-            gbc.gridx = 2;
-            gbc.gridy = 2;
-            gbc.gridwidth = 3;
-            centerPanel.add(scrollPane, gbc);
+    	    gbc.gridx = 2;
+    	    gbc.gridy = 2;
+    	    gbc.gridwidth = 3;
+    	    centerPanel.add(scrollPane, gbc);
 
-            // Add encryption methods to order list
-            ActionListener addToOrder = e -> {
-                JCheckBox source = (JCheckBox) e.getSource();
-                if (source.isSelected()) {
-                    orderListModel.addElement(source.getText());
-                } else {
-                    orderListModel.removeElement(source.getText());
-                }
-            };
+    	    // Add encryption methods to order list
+    	    ActionListener addToOrder = e -> {
+    	        JCheckBox source = (JCheckBox) e.getSource();
+    	        if (source.isSelected()) {
+    	            orderListModel.addElement(source.getText());
+    	        } else {
+    	            orderListModel.removeElement(source.getText());
+    	        }
+    	    };
 
-            aesCheckbox.addActionListener(addToOrder);
-            serpentCheckbox.addActionListener(addToOrder);
-            twofishCheckbox.addActionListener(addToOrder);
-            camelliaCheckbox.addActionListener(addToOrder);
-            kuzCheckbox.addActionListener(addToOrder);
+    	    aesCheckbox.addActionListener(addToOrder);
+    	    serpentCheckbox.addActionListener(addToOrder);
+    	    twofishCheckbox.addActionListener(addToOrder);
+    	    camelliaCheckbox.addActionListener(addToOrder);
+    	    kuzCheckbox.addActionListener(addToOrder);
 
-            frame.add(centerPanel, BorderLayout.CENTER);
+    	    frame.add(centerPanel, BorderLayout.CENTER);
 
-            // Footer Panel
-            JPanel footerPanel = new JPanel();
-            footerPanel.setLayout(new BoxLayout(footerPanel, BoxLayout.Y_AXIS));
-            footerPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+    	    // Footer Panel
+    	    JPanel footerPanel = new JPanel();
+    	    footerPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 0));  // Use FlowLayout.CENTER for horizontal centering
+    	    footerPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
-            JButton continueButton = new JButton("Continue");
-            continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-            continueButton.addActionListener(e -> {
-                char[] password = passwordField.getPassword();
-                if (password.length == 0) {
-                    JOptionPane.showMessageDialog(frame, "Password cannot be empty!", "Error", JOptionPane.ERROR_MESSAGE);
-                } else if (orderListModel.isEmpty()) {
-                    JOptionPane.showMessageDialog(frame, "Select at least one encryption method!", "Error", JOptionPane.ERROR_MESSAGE);
-                } else {
-                    ArrayList<String> encryptionOrder = new ArrayList<>();
-                    for (int i = 0; i < orderListModel.size(); i++) {
-                        encryptionOrder.add(orderListModel.getElementAt(i));
-                    }
-                    setupSuccess(frame, null);
-                }
-            });
+    	    // Back Button
+    	    JButton backButton = new JButton("Back");
+    	    backButton.setFont(new Font("SansSerif", Font.PLAIN, 14));
+    	    backButton.addActionListener(e -> {
+    	        selectSecurityModules(frame);  // Call selectSecurityModules() when Back button is clicked
+    	    });
 
-            footerPanel.add(continueButton);
-            frame.add(footerPanel, BorderLayout.SOUTH);
+    	    // Continue Button
+    	    JButton continueButton = new JButton("Continue");
+    	    continueButton.setFont(new Font("SansSerif", Font.PLAIN, 14));
+    	    continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);  // Ensuring button is centered
+    	    continueButton.addActionListener(e -> {
+    	        char[] password = passwordField.getPassword();
+    	        if (password.length == 0) {
+    	            JOptionPane.showMessageDialog(frame, "Password cannot be empty!", "Error", JOptionPane.ERROR_MESSAGE);
+    	        } else if (orderListModel.isEmpty()) {
+    	            JOptionPane.showMessageDialog(frame, "Select at least one encryption method!", "Error", JOptionPane.ERROR_MESSAGE);
+    	        } else {
+    	            ArrayList<String> encryptionOrder = new ArrayList<>();
+    	            for (int i = 0; i < orderListModel.size(); i++) {
+    	                encryptionOrder.add(orderListModel.getElementAt(i));
+    	            }
+    	            setupSuccess(frame, null); // Proceed with further steps
+    	        }
+    	    });
 
-            frame.revalidate();
-            frame.repaint();
-        }
+    	    // Add buttons to footer panel (Back and Continue)
+    	    footerPanel.add(backButton);
+    	    footerPanel.add(Box.createHorizontalStrut(10)); // Spacer between buttons
+    	    footerPanel.add(continueButton);
+
+    	    frame.add(footerPanel, BorderLayout.SOUTH);
+
+    	    frame.revalidate();
+    	    frame.repaint();
+    	}
+
     	
     	private void updateDeviceList(JPanel createAccountPanel) {
     	    // Get the available storage devices based on the mode selected
