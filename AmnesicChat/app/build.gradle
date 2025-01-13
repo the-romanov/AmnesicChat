@@ -35,6 +35,8 @@ dependencies {
     implementation("com.github.oshi:oshi-core:6.2.2")
     implementation('org.json:json:20241224')
     implementation name: 'pluginShare-1.0.0'
+    implementation('org.bouncycastle:bcpg-jdk18on:1.76')
+    implementation('org.pgpainless:pgpainless-core:1.5.2')
 }
 
 application {
