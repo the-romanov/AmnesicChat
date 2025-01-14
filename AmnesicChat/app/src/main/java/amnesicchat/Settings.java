@@ -1,3 +1,8 @@
+import javax.swing.*;
+import javax.swing.border.Border;
+import java.awt.*; 
+import java.awt.event.ActionListener;
+
 public class Settings {
 public void settingsUI() {
     	    JFrame frame = new JFrame("Settings UI");

@@ -1,66 +1,13 @@
 import java.awt.*;
 import java.awt.event.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.lang.ClassNotFoundException;
-import java.lang.NoSuchMethodException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.net.URL;
-import java.net.URLClassLoader;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.ArrayList;
 import java.util.List;
-import javax.imageio.ImageIO;
 import javax.swing.*;
-import javax.swing.border.Border;
-import javax.swing.border.EmptyBorder;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
-import javax.swing.filechooser.FileNameExtensionFilter;
-import oshi.SystemInfo;
-import oshi.hardware.HWDiskStore;
-import org.json.JSONException;
-import org.json.JSONObject;
-import java.util.HashMap;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.stream.Collectors;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.InputStream;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.FileOutputStream;
-
-import org.pgpainless.PGPainless;
-import org.pgpainless.key.generation.KeyRingBuilder;
-import org.pgpainless.algorithm.*;
-import org.pgpainless.algorithm.KeyFlag;
-import org.pgpainless.key.generation.type.*;
-import org.pgpainless.key.generation.type.rsa.RSA;
-import org.pgpainless.key.generation.type.rsa.*;
-import org.pgpainless.key.util.*;
-import org.pgpainless.util.Passphrase;
-import org.bouncycastle.openpgp.PGPException;
 
 public class App {
 	
 	/*
-	 * IF YOU ARE SEEING THIS SOURCE CODE:
-	 * I AM CURRENTLY BRANCHING CODE TO OTHER CLASSES.
-	 * IF YOU DO NOT SEE THIS MESSAGE, IT MEANS THE
-	 * IMPORTS HAVE BEEN COMPLETED.
 	 * 
 	 * The App class is the main class.
 	 * 
@@ -95,13 +42,19 @@ public class App {
     }
     
     //Import from CentralManager
-    CreateServer createServer = CentralManager.getCreateServer();
+    static CreateServer createServer = CentralManager.getCreateServer();
     
     // Access the Hash instance
-    Hash hash = CentralManager.getHash();
+    static Hash hash = CentralManager.getHash();
     
     // Access the CreateAccount instance
-    CreateAccount createAccount = CentralManager.getCreateAccount();
+    static CreateAccount createAccount = CentralManager.getCreateAccount();
+    
+    //Access the JoinServer instance
+    static JoinServer joinServer = CentralManager.getJoinServer();
+    
+    //Access the Peer To Peer instance
+    static JoinPeerToPeer peerToPeer = CentralManager.getJoinPeerToPeer();
     
     // Variables for account creation
     public boolean strictMode = false; // Enforce strict account protection
@@ -184,7 +137,7 @@ public class App {
     	        if (text.equals("JOIN A SERVER")) {
     	            button.addActionListener(new ActionListener() {
     	                public void actionPerformed(ActionEvent e) {
-    	                    createJoinServerUI(frame);
+    	                    joinServer.createJoinServerUI(frame);
     	                }
     	            });
     	        }
@@ -193,7 +146,7 @@ public class App {
     	        if (text.equals("PEER TO PEER")) {
     	            button.addActionListener(new ActionListener() {
     	                public void actionPerformed(ActionEvent e) {
-    	                    peerToPeerUI(frame); // Call peerToPeerUI
+    	                    peerToPeer.peerToPeerUI(frame); // Call peerToPeerUI
     	                }
     	            });
     	        }
@@ -304,153 +257,139 @@ public class App {
             frame.repaint();
     	}
 
-        public void mainMenu(JFrame frame) {
-            // Ensure this method runs on EDT (Event Dispatch Thread for stability of program)
-            SwingUtilities.invokeLater(new Runnable() {
+public void mainMenu(JFrame frame) {
+    // Ensure this method runs on EDT (Event Dispatch Thread for stability of program)
+    SwingUtilities.invokeLater(new Runnable() {
+        @Override
+        public void run() {
+            // Clear the current frame content
+            frame.getContentPane().removeAll();
+
+            // Set up the new layout
+            frame.setTitle("AmnesicChat - Account");
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.setSize(650, 450);
+            frame.setLayout(new BorderLayout());
+
+            try {
+                // Load the favicon image from the resources folder
+                URL faviconURL = getClass().getResource("/images/Favicon.png");
+                if (faviconURL != null) {
+                    ImageIcon favicon = new ImageIcon(faviconURL);
+                    frame.setIconImage(favicon.getImage());
+                } else {
+                    System.out.println("Favicon not found");
+                }
+            } catch (Exception e) {
+                System.out.println("Error loading favicon: " + e.getMessage());
+            }
+
+            // Main panel setup
+            JPanel appPanel = new JPanel();
+            appPanel.setLayout(new BoxLayout(appPanel, BoxLayout.Y_AXIS));
+            appPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20)); // Add padding
+            frame.add(appPanel, BorderLayout.CENTER);
+
+            // Banner setup
+            JLabel imageLabel = new JLabel();
+            URL labelURL = getClass().getResource("/images/AmnesicLabel.png");
+            if (labelURL != null) {
+                ImageIcon originalIcon = new ImageIcon(labelURL);
+                imageLabel.setIcon(originalIcon);
+            } else {
+                System.out.println("Image not found!");
+            }
+            imageLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            appPanel.add(imageLabel);
+
+            // Header label
+            JLabel headerLabel = new JLabel("Create Account", SwingConstants.CENTER);
+            headerLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
+            headerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            appPanel.add(headerLabel);
+
+            appPanel.add(Box.createVerticalStrut(10)); // Add spacing
+
+            // Instructions label
+            JLabel instructionLabel = new JLabel(
+                    "<html>If you have an existing account, use the directory selection below to open your account file. Otherwise, create a new account with the bottom button.</html>",
+                    SwingConstants.CENTER);
+            instructionLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+            instructionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            instructionLabel.setHorizontalAlignment(SwingConstants.CENTER);
+            appPanel.add(instructionLabel);
+
+            appPanel.add(Box.createVerticalStrut(20)); // Add spacing
+
+            // File chooser panel
+            JPanel fileChooserPanel = new JPanel();
+            fileChooserPanel.setLayout(new BoxLayout(fileChooserPanel, BoxLayout.X_AXIS));
+
+            // Create the file path field
+            JTextField filePathField = new JTextField();
+
+            // Create the browse button with resized image icon
+            URL fileButtonIconURL = getClass().getResource("/images/File.png");
+            if (fileButtonIconURL != null) {
+                ImageIcon originalIcon = new ImageIcon(fileButtonIconURL);
+                Image scaledImage = originalIcon.getImage().getScaledInstance(40, 40, Image.SCALE_SMOOTH); // Resize image to 50x50
+                ImageIcon resizedIcon = new ImageIcon(scaledImage);
+
+                JButton browseButton = new JButton(resizedIcon);
+                browseButton.setPreferredSize(new Dimension(50, 50)); // Set fixed dimensions for the button
+
+                // Set the height of the file path field to match the browse button
+                filePathField.setMaximumSize(new Dimension(Integer.MAX_VALUE, browseButton.getPreferredSize().height));
+
+                // Add components to the panel
+                fileChooserPanel.add(filePathField);
+                fileChooserPanel.add(Box.createHorizontalStrut(10)); // Add spacing
+                fileChooserPanel.add(browseButton);
+
+                // Add action listener for browse button
+                browseButton.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        JFileChooser fileChooser = new JFileChooser();
+                        int result = fileChooser.showOpenDialog(frame);
+                        if (result == JFileChooser.APPROVE_OPTION) {
+                            filePathField.setText(fileChooser.getSelectedFile().getAbsolutePath());
+                        }
+                    }
+                });
+
+                // Add the components of file choosing to the main panel
+                appPanel.add(fileChooserPanel);
+            } else {
+                System.out.println("File button icon not found");
+            }
+
+            appPanel.add(Box.createVerticalStrut(20)); // Add spacing
+
+            // Create Account button
+            JButton createAccountButton = new JButton("Create Account");
+            createAccountButton.setPreferredSize(new Dimension(200, 40));
+            createAccountButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+            createAccountButton.addActionListener(new ActionListener() {
                 @Override
-                public void run() {
-                    // Initialise the frame
-        	        frame.getContentPane().removeAll();
-                    frame.setTitle("AmnesicChat - Account");
-                    frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-                    frame.setSize(650, 450);
-                    frame.getContentPane().removeAll();
-                    frame.setLayout(new BorderLayout());
-
-                    try {
-                        // Load the favicon image from the resources folder
-                        URL faviconURL = getClass().getResource("/images/Favicon.png");
-                        if (faviconURL != null) {
-                            ImageIcon favicon = new ImageIcon(faviconURL);
-                            frame.setIconImage(favicon.getImage());
-                        } else {
-                            System.out.println("Favicon not found");
-                        }
-                    } catch (Exception e) {
-                        System.out.println("Error loading favicon: " + e.getMessage());
-                    }
-
-                    // Main panel setup
-                    appPanel.setLayout(new BoxLayout(appPanel, BoxLayout.Y_AXIS));
-                    appPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20)); // Add padding
-                    frame.add(appPanel, BorderLayout.CENTER);
-
-                    // Banner setup
-                    JLabel imageLabel = new JLabel();
-                    if (labelURL != null) {
-                        ImageIcon originalIcon = new ImageIcon(labelURL);
-                        imageLabel.setIcon(originalIcon);
-                    } else {
-                        System.out.println("Image not found!");
-                    }
-                    imageLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-                    appPanel.add(imageLabel);
-
-                    // Header label
-                    JLabel headerLabel = new JLabel("Create Account", SwingConstants.CENTER);
-                    headerLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
-                    headerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-                    appPanel.add(headerLabel);
-
-                    appPanel.add(Box.createVerticalStrut(10)); // Add spacing
-
-                    // Instructions label
-                    JLabel instructionLabel = new JLabel(
-                            "<html>If you have an existing account, use the directory selection below to open your account file. Otherwise, create a new account with the bottom button.</html>",
-                            SwingConstants.CENTER);
-                    instructionLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
-                    instructionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-                    instructionLabel.setHorizontalAlignment(SwingConstants.CENTER);
-                    appPanel.add(instructionLabel);
-
-                    appPanel.add(Box.createVerticalStrut(20)); // Add spacing
-
-                    // File chooser panel
-                    JPanel fileChooserPanel = new JPanel();
-                    fileChooserPanel.setLayout(new BoxLayout(fileChooserPanel, BoxLayout.X_AXIS));
-
-                    // Create the file path field
-                    JTextField filePathField = new JTextField();
-
-                    // Create the browse button with resized image icon
-                    if (fileButtonIconURL != null) {
-                        ImageIcon originalIcon = new ImageIcon(fileButtonIconURL);
-                        Image scaledImage = originalIcon.getImage().getScaledInstance(40, 40, Image.SCALE_SMOOTH); // Resize image to 50x50
-                        ImageIcon resizedIcon = new ImageIcon(scaledImage);
-                        
-                        JButton browseButton = new JButton(resizedIcon);
-                        browseButton.setPreferredSize(new Dimension(50, 50)); // Set fixed dimensions for the button
-
-                        // Set the height of the file path field to match the browse button
-                        filePathField.setMaximumSize(new Dimension(Integer.MAX_VALUE, browseButton.getPreferredSize().height));
-
-                        // Add components to the panel
-                        fileChooserPanel.add(filePathField);
-                        fileChooserPanel.add(Box.createHorizontalStrut(10)); // Add spacing
-                        fileChooserPanel.add(browseButton);
-
-                        // Add action listener for browse button
-                        browseButton.addActionListener(new ActionListener() {
-                            @Override
-                            public void actionPerformed(ActionEvent e) {
-                                JFileChooser fileChooser = new JFileChooser();
-                                int result = fileChooser.showOpenDialog(frame);
-                                if (result == JFileChooser.APPROVE_OPTION) {
-                                    filePathField.setText(fileChooser.getSelectedFile().getAbsolutePath());
-                                }
-                            }
-                        });
-
-                        // Add the components of file choosing to the main panel
-                        appPanel.add(fileChooserPanel);
-                    } else {
-                        System.out.println("File button icon not found");
-                    }
-
-                    appPanel.add(Box.createVerticalStrut(20)); // Add spacing
-
-                    // Create Account button
-                    JButton createAccountButton = new JButton("Create Account");
-                    createAccountButton.setPreferredSize(new Dimension(200, 40));
-                    createAccountButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-                    createAccountButton.addActionListener(new ActionListener() {
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                            createAccount.createAccount(frame);
-                        }
-                    });
-                    appPanel.add(createAccountButton);
-                    frame.revalidate();
-        	        frame.repaint();
-                    // Listen to the text field for changes
-                    filePathField.getDocument().addDocumentListener(new DocumentListener() {
-                        @Override
-                        public void insertUpdate(DocumentEvent e) {
-                            updateButtonText();
-                        }
-
-                        @Override
-                        public void removeUpdate(DocumentEvent e) {
-                            updateButtonText();
-                        }
-
-                        @Override
-                        public void changedUpdate(DocumentEvent e) {
-                            updateButtonText();
-                        }
-
-                        // Method to update the button text based on the file path field
-                        private void updateButtonText() {
-                            if (filePathField.getText().trim().isEmpty()) {
-                                createAccountButton.setText("Create Account");
-                            } else {
-                                createAccountButton.setText("Load Account");
-                            }
-                        }
-                    });
+                public void actionPerformed(ActionEvent e) {
+                    createAccount.createAccount(frame);
                 }
             });
+            appPanel.add(createAccountButton);
+
+            // Back button to return to the main menu
+            JButton backButton = new JButton("Back");
+            backButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+            backButton.addActionListener(e -> mainMenu(frame)); // This will call the mainMenu again
+            appPanel.add(backButton);
+
+            frame.revalidate();  // Revalidate to ensure everything is laid out properly
+            frame.repaint();  // Repaint to show the changes
         }
+    });
+}
+
 
 
     public static void main(String[] args) {

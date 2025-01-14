@@ -1,5 +1,11 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*; 
+
 public class JoinServer {
 	public void connectionUI(JFrame frame) {
+		
+	    App app = CentralManager.getApp();
 		// Clear frame
 	    frame.getContentPane().removeAll();
 	    
@@ -79,7 +85,7 @@ public class JoinServer {
 	    backButton.addActionListener(new ActionListener() {
 	        @Override
 	        public void actionPerformed(ActionEvent e) {
-	            loggedInMenu(frame, null, null); 
+	            app.loggedInMenu(frame, null, null); 
 	        }
 	    });
 	}

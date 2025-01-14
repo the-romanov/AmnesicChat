@@ -1,3 +1,6 @@
+import javax.swing.*;
+import java.awt.*;
+
 public class DirectoryServer {
 	public void directoryServer(JFrame frame) {
 	    // Clear frame

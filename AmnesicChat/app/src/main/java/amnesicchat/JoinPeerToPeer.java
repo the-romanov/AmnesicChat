@@ -1,3 +1,6 @@
+import javax.swing.*;
+import java.awt.*;
+
 public class JoinPeerToPeer {
 	public void peerToPeerUI(JFrame frame) {
     	// Clear frame

@@ -1,23 +1,37 @@
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.*;
-import java.util.*;
-import java.util.List;
+import java.awt.*;                          
+import java.awt.event.*;  
+import java.util.*; 
+import java.util.List; 
 import java.util.stream.Collectors;
+import java.io.*;          
+import java.net.URL;
+import java.nio.file.*;
+import java.nio.charset.StandardCharsets;
+import javax.swing.border.EmptyBorder;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import oshi.SystemInfo;
 import oshi.hardware.HWDiskStore;
+import java.time.*;
+import java.time.format.*; 
+import java.time.temporal.ChronoUnit;
 
 public class CreateAccount {
+	
+	//Variables for Account Creation
     private boolean strictMode = false;
     private List<String> hashedSerials = new ArrayList<>();
     
-    CreateServer createServer = CentralManager.getCreateServer();
-    
+    //Get image
+    public URL fileButtonIconURL = getClass().getResource("/images/File.png");
+     
     //Access the Hash instance
-    Hash hash = CentralManager.getHash();
+    static Hash hash = CentralManager.getHash();
     
     //Access the App instance
-    App app = CentralManager.getApp();
+    static App app = CentralManager.getApp();
     
     public void setupSuccess(JFrame frame, List<String> selected) {
 		// Clear frame
@@ -72,7 +86,7 @@ public class CreateAccount {
         continueButton.setFont(new Font("Arial", Font.PLAIN, 14));
         continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         continueButton.addActionListener(e -> {
-        	firstTimeSetup(frame);
+        	app.firstTimeSetup(frame);
         });
         panel.add(continueButton);
 
@@ -377,56 +391,6 @@ if (!moduleFolder.exists() || !moduleFolder.isDirectory()) {
     moduleListPanel.revalidate();
     moduleListPanel.repaint();
     return;
-}
-
-// Get all files in the directory
-File[] moduleFiles = moduleFolder.listFiles((dir, name) -> name.endsWith(".json")); // Assuming JSON metadata
-if (moduleFiles == null || moduleFiles.length == 0) {
-    JLabel noModulesLabel = new JLabel("No modules found.");
-    moduleListPanel.add(noModulesLabel);
-    moduleListPanel.revalidate();
-    moduleListPanel.repaint();
-    return;
-}
-
-// Process files for pagination
-int start = (currentPage - 1) * MODULES_PER_PAGE;
-int end = Math.min(start + MODULES_PER_PAGE, moduleFiles.length);
-
-for (int i = start; i < end; i++) {
-    File moduleFile = moduleFiles[i];
-
-    // Read metadata (JSON example)
-    String moduleName = moduleFile.getName();
-    String moduleDescription = "Description not available";
-    try {
-        String jsonContent = Files.readString(moduleFile.toPath(), StandardCharsets.UTF_8);
-        JSONObject jsonObject = new JSONObject(jsonContent);
-        moduleName = jsonObject.optString("name", moduleName);
-        moduleDescription = jsonObject.optString("description", moduleDescription);
-    } catch (IOException | JSONException e) {
-        e.printStackTrace();
-    }
-
-    // Create UI components
-    JPanel modulePanel = new JPanel();
-    modulePanel.setLayout(new BorderLayout());
-    modulePanel.setBorder(BorderFactory.createLineBorder(Color.GRAY));
-
-    JLabel moduleTitle = new JLabel(moduleName);
-    moduleTitle.setFont(new Font("SansSerif", Font.BOLD, 14));
-
-    JLabel moduleDescriptionLabel = new JLabel(moduleDescription);
-    moduleDescriptionLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
-
-    JCheckBox moduleCheckBox = new JCheckBox();
-    moduleCheckBox.setHorizontalAlignment(SwingConstants.RIGHT);
-
-    modulePanel.add(moduleTitle, BorderLayout.NORTH);
-    modulePanel.add(moduleDescriptionLabel, BorderLayout.CENTER);
-    modulePanel.add(moduleCheckBox, BorderLayout.EAST);
-
-    moduleListPanel.add(modulePanel);
 }
 
 moduleListPanel.revalidate();
@@ -1011,7 +975,7 @@ frame.repaint();
 	        JButton backButton = new JButton("Back");
 	        backButton.setPreferredSize(new Dimension(200, 40));
 	        backButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-	        backButton.addActionListener(e -> createAccount.createAccount(frame));
+	        backButton.addActionListener(e -> createAccount(frame));
 	        mainPanel.add(Box.createVerticalStrut(10)); // Add spacing between buttons
 	        mainPanel.add(backButton);
 
@@ -1169,7 +1133,7 @@ frame.repaint();
                     .collect(Collectors.toList());
 
                 // Pass the sorted hashed serials to the next function
-                app.insertGPGIdentity(frame);
+                insertGPGIdentity(frame);
             });
 
             createAccountPanel.add(continueButton);
