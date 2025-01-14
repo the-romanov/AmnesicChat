@@ -3,9 +3,19 @@ import java.awt.*;
 import java.awt.event.*;  
 import java.util.*; 
 import java.util.List; 
+import java.util.ArrayList; 
 import java.util.stream.Collectors;
+import java.security.SecureRandom;
+import java.security.Security;
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.*;          
 import java.net.URL;
+import java.util.Base64;   
+import java.io.File;            
+import java.io.FileWriter;       
+import java.io.FileOutputStream; 
+import java.nio.file.Files;    
 import java.nio.file.*;
 import java.nio.charset.StandardCharsets;
 import javax.swing.border.EmptyBorder;
@@ -23,6 +33,9 @@ public class CreateAccount {
 	//Variables for Account Creation
     private boolean strictMode = false;
     private List<String> hashedSerials = new ArrayList<>();
+    
+    public String username = "";
+    public String hashedCommunicationKey = "";
     
     //Get image
     public URL fileButtonIconURL = getClass().getResource("/images/File.png");
@@ -86,7 +99,7 @@ public class CreateAccount {
         continueButton.setFont(new Font("Arial", Font.PLAIN, 14));
         continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         continueButton.addActionListener(e -> {
-        	app.firstTimeSetup(frame);
+        	app.loggedInMenu(frame, username, "GPG Key Needed");
         });
         panel.add(continueButton);
 
@@ -97,159 +110,335 @@ public class CreateAccount {
     }
 
 public void createPassword(JFrame frame) {
-// Clear frame
-frame.getContentPane().removeAll();
-frame.setSize(600, 400);
-frame.setLayout(new BorderLayout());
+    // Clear frame
+    frame.getContentPane().removeAll();
+    frame.setSize(600, 600);  // Increased height to accommodate new UI elements
+    frame.setLayout(new BorderLayout());
 
-// Header Panel
-JPanel headerPanel = new JPanel();
-headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
-headerPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+    // Header Panel
+    JPanel headerPanel = new JPanel();
+    headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
+    headerPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));  // More space around the header
 
-JLabel headerLabel = new JLabel("Create Password", SwingConstants.CENTER);
-headerLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
-headerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-headerPanel.add(headerLabel);
+    JLabel headerLabel = new JLabel("Create Password", SwingConstants.CENTER);
+    headerLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
+    headerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+    headerPanel.add(headerLabel);
 
-JLabel descriptionLabel = new JLabel("<html>If you lose or forget the password, you will lose access to your account.<br>"
-        + "Keep the password extremely safe! Nobody will help you to recover your account once you lose the password.</html>",
-        SwingConstants.CENTER);
-descriptionLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
-descriptionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-headerPanel.add(Box.createVerticalStrut(10));
-headerPanel.add(descriptionLabel);
+    JLabel descriptionLabel = new JLabel("<html>If you lose or forget the password, you will lose access to your account.<br>"
+            + "Keep the password extremely safe! Nobody will help you to recover your account once you lose the password.</html>",
+            SwingConstants.CENTER);
+    descriptionLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+    descriptionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+    headerPanel.add(Box.createVerticalStrut(10));
+    headerPanel.add(descriptionLabel);
 
-frame.add(headerPanel, BorderLayout.NORTH);
+    frame.add(headerPanel, BorderLayout.NORTH);
 
-// Center Panel
-JPanel centerPanel = new JPanel();
-centerPanel.setLayout(new GridBagLayout());
-GridBagConstraints gbc = new GridBagConstraints();
-gbc.fill = GridBagConstraints.HORIZONTAL;
-gbc.insets = new Insets(10, 10, 10, 10);
+    // Center Panel
+    JPanel centerPanel = new JPanel();
+    centerPanel.setLayout(new GridBagLayout());
+    GridBagConstraints gbc = new GridBagConstraints();
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    gbc.insets = new Insets(15, 15, 15, 15);  // More spacing between elements
 
-// Password Field
-gbc.gridx = 0;
-gbc.gridy = 0;
-gbc.gridwidth = 2;
-JLabel passwordLabel = new JLabel("Password:");
-passwordLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
-centerPanel.add(passwordLabel, gbc);
+    // Username Label and Field
+    gbc.gridx = 0;
+    gbc.gridy = 0;
+    gbc.gridwidth = 2;
+    JLabel usernameLabel = new JLabel("Username:");
+    usernameLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+    centerPanel.add(usernameLabel, gbc);
 
-gbc.gridx = 2;
-gbc.gridy = 0;
-gbc.gridwidth = 3;
-JPasswordField passwordField = new JPasswordField(20);
-centerPanel.add(passwordField, gbc);
+    JTextField usernameField = new JTextField(20);
+    usernameField.setMaximumSize(new Dimension(300, 25));
+    gbc.gridx = 2;
+    gbc.gridy = 0;
+    gbc.gridwidth = 3;
+    centerPanel.add(usernameField, gbc);
 
-// Encryption Methods
-gbc.gridx = 0;
-gbc.gridy = 1;
-gbc.gridwidth = 2;
-JLabel encryptionLabel = new JLabel("Encryption Method(s):");
-encryptionLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
-centerPanel.add(encryptionLabel, gbc);
+    // Add a gap
+    gbc.gridx = 0;
+    gbc.gridy = 1;
+    gbc.gridwidth = 5;
+    centerPanel.add(Box.createVerticalStrut(10), gbc);
 
-JPanel encryptionMethodsPanel = new JPanel();
-encryptionMethodsPanel.setLayout(new GridLayout(2, 3, 5, 5));
-JCheckBox aesCheckbox = new JCheckBox("AES");
-JCheckBox serpentCheckbox = new JCheckBox("Serpent");
-JCheckBox twofishCheckbox = new JCheckBox("Twofish");
-JCheckBox camelliaCheckbox = new JCheckBox("Camellia");
-JCheckBox kuzCheckbox = new JCheckBox("Kuznyechik");
+    // Description Label and TextArea
+    gbc.gridx = 0;
+    gbc.gridy = 2;
+    gbc.gridwidth = 2;
+    JLabel descriptionLabel2 = new JLabel("Description (Optional):");
+    descriptionLabel2.setFont(new Font("SansSerif", Font.PLAIN, 14));
+    centerPanel.add(descriptionLabel2, gbc);
 
-encryptionMethodsPanel.add(aesCheckbox);
-encryptionMethodsPanel.add(serpentCheckbox);
-encryptionMethodsPanel.add(twofishCheckbox);
-encryptionMethodsPanel.add(camelliaCheckbox);
-encryptionMethodsPanel.add(kuzCheckbox);
+    JTextArea descriptionArea = new JTextArea(5, 20);
+    descriptionArea.setLineWrap(true);
+    descriptionArea.setWrapStyleWord(true);
+    descriptionArea.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+    gbc.gridx = 2;
+    gbc.gridy = 2;
+    gbc.gridwidth = 3;
+    centerPanel.add(descriptionArea, gbc);
 
-gbc.gridx = 2;
-gbc.gridy = 1;
-gbc.gridwidth = 3;
-centerPanel.add(encryptionMethodsPanel, gbc);
+    // Password Minimum Length Notice
+    gbc.gridx = 0;
+    gbc.gridy = 3;
+    gbc.gridwidth = 5; // Span the full width
+    JLabel minCharLabel = new JLabel("Password must not be empty.");
+    minCharLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+    minCharLabel.setForeground(Color.RED); // Optional: Make the notice more prominent
+    centerPanel.add(minCharLabel, gbc);
 
-// Encryption Order
-gbc.gridx = 0;
-gbc.gridy = 2;
-gbc.gridwidth = 2;
-JLabel orderLabel = new JLabel("Encryption Order:");
-orderLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
-centerPanel.add(orderLabel, gbc);
+    // Password Label
+    gbc.gridx = 0;
+    gbc.gridy = 4;
+    gbc.gridwidth = 2;
+    JLabel passwordLabel = new JLabel("Password:");
+    passwordLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+    centerPanel.add(passwordLabel, gbc);
 
-DefaultListModel<String> orderListModel = new DefaultListModel<>();
-JList<String> orderList = new JList<>(orderListModel);
-orderList.setVisibleRowCount(5);
-orderList.setFixedCellHeight(20);
-orderList.setFixedCellWidth(100);
-JScrollPane scrollPane = new JScrollPane(orderList);
+    // Password Field
+    gbc.gridx = 2;
+    gbc.gridy = 4;
+    gbc.gridwidth = 3;
+    JPasswordField passwordField = new JPasswordField(20);
+    passwordField.setPreferredSize(new Dimension(250, 30));  // Increase the width of the password field
+    centerPanel.add(passwordField, gbc);
 
-gbc.gridx = 2;
-gbc.gridy = 2;
-gbc.gridwidth = 3;
-centerPanel.add(scrollPane, gbc);
+    // Encryption Methods
+    gbc.gridx = 0;
+    gbc.gridy = 5;
+    gbc.gridwidth = 2;
+    JLabel encryptionLabel = new JLabel("Encryption Method(s):");
+    encryptionLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+    centerPanel.add(encryptionLabel, gbc);
 
-// Add encryption methods to order list
-ActionListener addToOrder = e -> {
-    JCheckBox source = (JCheckBox) e.getSource();
-    if (source.isSelected()) {
-        orderListModel.addElement(source.getText());
-    } else {
-        orderListModel.removeElement(source.getText());
-    }
-};
+    // Encryption Methods Panel with more spacing
+    JPanel encryptionMethodsPanel = new JPanel();
+    encryptionMethodsPanel.setLayout(new GridLayout(3, 2, 10, 10));  // Adjusted for better spacing
+    JCheckBox aesCheckbox = new JCheckBox("AES");
+    JCheckBox serpentCheckbox = new JCheckBox("Serpent");
+    JCheckBox twofishCheckbox = new JCheckBox("Twofish");
+    JCheckBox camelliaCheckbox = new JCheckBox("Camellia");
+    JCheckBox kuzCheckbox = new JCheckBox("Kuznyechik");
 
-aesCheckbox.addActionListener(addToOrder);
-serpentCheckbox.addActionListener(addToOrder);
-twofishCheckbox.addActionListener(addToOrder);
-camelliaCheckbox.addActionListener(addToOrder);
-kuzCheckbox.addActionListener(addToOrder);
+    encryptionMethodsPanel.add(aesCheckbox);
+    encryptionMethodsPanel.add(serpentCheckbox);
+    encryptionMethodsPanel.add(twofishCheckbox);
+    encryptionMethodsPanel.add(camelliaCheckbox);
+    encryptionMethodsPanel.add(kuzCheckbox);
 
-frame.add(centerPanel, BorderLayout.CENTER);
+    gbc.gridx = 2;
+    gbc.gridy = 5;
+    gbc.gridwidth = 3;
+    centerPanel.add(encryptionMethodsPanel, gbc);
 
-// Footer Panel
-JPanel footerPanel = new JPanel();
-footerPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 0));  // Use FlowLayout.CENTER for horizontal centering
-footerPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+    // Encryption Order
+    gbc.gridx = 0;
+    gbc.gridy = 6;
+    gbc.gridwidth = 2;
+    JLabel orderLabel = new JLabel("Encryption Order:");
+    orderLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+    centerPanel.add(orderLabel, gbc);
 
-// Back Button
-JButton backButton = new JButton("Back");
-backButton.setFont(new Font("SansSerif", Font.PLAIN, 14));
-backButton.addActionListener(e -> {
-    selectSecurityModules(frame);  // Call selectSecurityModules() when Back button is clicked
-});
+    DefaultListModel<String> orderListModel = new DefaultListModel<>();
+    JList<String> orderList = new JList<>(orderListModel);
+    orderList.setVisibleRowCount(5);
+    orderList.setFixedCellHeight(20);
+    orderList.setFixedCellWidth(100);
+    JScrollPane scrollPane = new JScrollPane(orderList);
 
-// Continue Button
-JButton continueButton = new JButton("Continue");
-continueButton.setFont(new Font("SansSerif", Font.PLAIN, 14));
-continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);  // Ensuring button is centered
-continueButton.addActionListener(e -> {
-    char[] password = passwordField.getPassword();
-    if (password.length == 0) {
-        JOptionPane.showMessageDialog(frame, "Password cannot be empty!", "Error", JOptionPane.ERROR_MESSAGE);
-    } else if (orderListModel.isEmpty()) {
-        JOptionPane.showMessageDialog(frame, "Select at least one encryption method!", "Error", JOptionPane.ERROR_MESSAGE);
-    } else {
-        ArrayList<String> encryptionOrder = new ArrayList<>();
-        for (int i = 0; i < orderListModel.size(); i++) {
-            encryptionOrder.add(orderListModel.getElementAt(i));
+    gbc.gridx = 2;
+    gbc.gridy = 6;
+    gbc.gridwidth = 3;
+    centerPanel.add(scrollPane, gbc);
+
+    // Add encryption methods to order list
+    ActionListener addToOrder = e -> {
+        JCheckBox source = (JCheckBox) e.getSource();
+        if (source.isSelected()) {
+            orderListModel.addElement(source.getText());
+        } else {
+            orderListModel.removeElement(source.getText());
         }
-        setupSuccess(frame, null); // Proceed with further steps
-    }
-});
+    };
 
-// Add buttons to footer panel (Back and Continue)
-footerPanel.add(backButton);
-footerPanel.add(Box.createHorizontalStrut(10)); // Spacer between buttons
-footerPanel.add(continueButton);
+    aesCheckbox.addActionListener(addToOrder);
+    serpentCheckbox.addActionListener(addToOrder);
+    twofishCheckbox.addActionListener(addToOrder);
+    camelliaCheckbox.addActionListener(addToOrder);
+    kuzCheckbox.addActionListener(addToOrder);
 
-frame.add(footerPanel, BorderLayout.SOUTH);
+    frame.add(centerPanel, BorderLayout.CENTER);
 
-frame.revalidate();
-frame.repaint();
+    // Footer Panel
+    JPanel footerPanel = new JPanel();
+    footerPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 0));  // Use FlowLayout.CENTER for horizontal centering
+    footerPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));  // Increased padding
+
+    // Back Button
+    JButton backButton = new JButton("Back");
+    backButton.setFont(new Font("SansSerif", Font.PLAIN, 14));
+    backButton.addActionListener(e -> {
+        selectSecurityModules(frame);  // Call selectSecurityModules() when Back button is clicked
+    });
+
+    // Continue Button
+    JButton continueButton = new JButton("Continue");
+    continueButton.setFont(new Font("SansSerif", Font.PLAIN, 14));
+    continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);  // Ensuring button is centered
+    continueButton.addActionListener(e -> {
+    	char[] pass = passwordField.getPassword();
+    	String passString = new String(pass);  
+    	String password = hash.hashSHA256(passString);
+        username = usernameField.getText();
+        
+        // Generate the random communication key
+        String communicationKey = generateRandomKey();
+
+            // Generate SHA512 hash of the communication key
+        //hashedCommunicationKey = hash.hashSHA512(hash.hashSHA512(communicationKey));
+
+            // Set the description to the hashed communication key
+            String description = descriptionArea.getText();
+
+            if (username.isEmpty()) {
+                JOptionPane.showMessageDialog(frame, "Username cannot be empty!", "Error", JOptionPane.ERROR_MESSAGE);
+            } else if (pass.length == 0) {
+                JOptionPane.showMessageDialog(frame, "Password cannot be empty!", "Error", JOptionPane.ERROR_MESSAGE);
+            } else if (orderListModel.isEmpty()) {
+                JOptionPane.showMessageDialog(frame, "Select at least one encryption method!", "Error", JOptionPane.ERROR_MESSAGE);
+            } else {
+                // Get the encryption order
+                ArrayList<String> encryptionOrder = new ArrayList<>();
+                for (int i = 0; i < orderListModel.size(); i++) {
+                    encryptionOrder.add(orderListModel.getElementAt(i));
+                }
+
+                try {
+                    // Format the content to include username and the hashed communication key
+                    String content = username + ":" + description + ":" + communicationKey;
+
+                    // Create the file
+                    File keyFile = new File(System.getProperty("user.home") + File.separator + "communication_key.txt");
+                    try (FileWriter writer = new FileWriter(keyFile)) {
+                        writer.write(content);
+                    }
+
+                    // Encrypt the file
+                    byte[] encryptedData = encryptFileWithOrder(keyFile, new String(password), encryptionOrder);
+
+                    // Save the encrypted file
+                    File encryptedFile = new File(System.getProperty("user.home") + File.separator + "communication_key_encrypted.txt");
+                    try (FileOutputStream fos = new FileOutputStream(encryptedFile)) {
+                        fos.write(encryptedData);
+                    }
+
+                    JOptionPane.showMessageDialog(frame, "File created and encrypted successfully:\n" + encryptedFile.getAbsolutePath(), 
+                                                  "Success", JOptionPane.INFORMATION_MESSAGE);
+                    setupSuccess(frame, null); // Proceed to the next step
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(frame, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    ex.printStackTrace();
+                }
+            }
+    });
+
+    // Add buttons to footer panel (Back and Continue)
+    footerPanel.add(backButton);
+    footerPanel.add(Box.createHorizontalStrut(10)); // Spacer between buttons
+    footerPanel.add(continueButton);
+
+    frame.add(footerPanel, BorderLayout.SOUTH);
+
+    frame.revalidate();
+    frame.repaint();
 }
 
+//Generate Random Key and Hash
+private String generateRandomKey() {
+ SecureRandom random = new SecureRandom();
+ byte[] keyBytes = new byte[512]; // 4096 bits = 512 bytes
+ random.nextBytes(keyBytes);
+ String key = Base64.getEncoder().encodeToString(keyBytes); // UTF-8 compatible string
+ return hash.hashSHA512(key); // Hash the key using SHA-512
+}
+
+//Encryption Functionality
+private byte[] encryptFileWithOrder(File file, String password, ArrayList<String> encryptionOrder) throws Exception {
+ // Read the file's content
+ byte[] fileContent = Files.readAllBytes(file.toPath());
+
+ // Apply encryption for each algorithm in the order
+ byte[] encryptedData = fileContent;
+ for (String algorithm : encryptionOrder) {
+     switch (algorithm) {
+         case "AES":
+             encryptedData = encryptWithAES(encryptedData, password);
+             break;
+         case "Serpent":
+             encryptedData = encryptWithSerpent(encryptedData, password);
+             break;
+         case "Twofish":
+             encryptedData = encryptWithTwofish(encryptedData, password);
+             break;
+         case "Camellia":
+             encryptedData = encryptWithCamellia(encryptedData, password);
+             break;
+         case "Kuznyechik":
+             encryptedData = encryptWithKuznyechik(encryptedData, password);
+             break;
+         default:
+             throw new IllegalArgumentException("Unknown encryption algorithm: " + algorithm);
+     }
+ }
+
+ return encryptedData;
+}
+
+//AES Encryption
+private byte[] encryptWithAES(byte[] data, String password) throws Exception {
+ SecretKeySpec keySpec = new SecretKeySpec(password.getBytes(StandardCharsets.UTF_8), "AES");
+ Cipher cipher = Cipher.getInstance("AES");
+ cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+ return cipher.doFinal(data);
+}
+
+//Serpent Encryption (Example with BouncyCastle)
+private byte[] encryptWithSerpent(byte[] data, String password) throws Exception {
+ Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+ Cipher cipher = Cipher.getInstance("Serpent", "BC");
+ SecretKeySpec keySpec = new SecretKeySpec(password.getBytes(StandardCharsets.UTF_8), "Serpent");
+ cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+ return cipher.doFinal(data);
+}
+
+//Twofish Encryption (Example with BouncyCastle)
+private byte[] encryptWithTwofish(byte[] data, String password) throws Exception {
+ Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+ Cipher cipher = Cipher.getInstance("Twofish", "BC");
+ SecretKeySpec keySpec = new SecretKeySpec(password.getBytes(StandardCharsets.UTF_8), "Twofish");
+ cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+ return cipher.doFinal(data);
+}
+
+//Camellia Encryption (Example with BouncyCastle)
+private byte[] encryptWithCamellia(byte[] data, String password) throws Exception {
+ Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+ Cipher cipher = Cipher.getInstance("Camellia", "BC");
+ SecretKeySpec keySpec = new SecretKeySpec(password.getBytes(StandardCharsets.UTF_8), "Camellia");
+ cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+ return cipher.doFinal(data);
+}
+
+//Kuznyechik Encryption (Example with BouncyCastle)
+private byte[] encryptWithKuznyechik(byte[] data, String password) throws Exception {
+ Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+ Cipher cipher = Cipher.getInstance("GOST3412-2015", "BC");
+ SecretKeySpec keySpec = new SecretKeySpec(password.getBytes(StandardCharsets.UTF_8), "GOST3412-2015");
+ cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+ return cipher.doFinal(data);
+}
 
 private void updateDeviceList(JPanel createAccountPanel) {
 // Get the available storage devices based on the mode selected
