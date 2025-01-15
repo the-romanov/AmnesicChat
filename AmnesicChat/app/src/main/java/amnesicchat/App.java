@@ -3,6 +3,7 @@ import java.awt.event.*;
 import java.net.URL;
 import java.util.*;
 import java.util.List;
+import java.util.Arrays;
 import javax.swing.*;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -615,7 +616,7 @@ public class App {
     }
 
     // AES Decryption
-    private byte[] decryptWithEAS(byte[] data, byte[] password) throws Exception {
+    private byte[] decryptWithAES(byte[] data, byte[] password) throws Exception {
         Security.addProvider(new BouncyCastleProvider());
         Cipher cipher = Cipher.getInstance("AES", "BC");
         SecretKeySpec keySpec = new SecretKeySpec(password, "AES");
