@@ -4,6 +4,8 @@ import java.net.URL;
 import java.util.*;
 import java.util.List;
 import javax.swing.*;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
@@ -15,8 +17,12 @@ import javax.crypto.spec.SecretKeySpec;
 import java.security.Security;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.nio.file.Files;
 import javax.swing.JButton;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.io.FileOutputStream;
 
 public class App {
 	
@@ -350,13 +356,7 @@ public class App {
 
                 appPanel.add(Box.createVerticalStrut(20)); // Add spacing
 
-                appPanel.add(createAccountButton);
-
-                // Back button to return to the main menu
-                JButton backButton = new JButton("Back");
-                backButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-                backButton.addActionListener(e -> mainMenu(frame)); // This will call the mainMenu again
-                appPanel.add(backButton);
+                appPanel.add(createAccountButton); 
 
                 frame.revalidate();  // Revalidate to ensure everything is laid out properly
                 frame.repaint();  // Repaint to show the changes
@@ -364,23 +364,28 @@ public class App {
         });
     }
 
+    private byte[] getEncryptedData(String filePath) throws IOException {
+        return Files.readAllBytes(Paths.get(filePath));  // Read encrypted file content as byte array
+    }
+    
     private void loadAccount(String filePath, JFrame frame) {
         // Clear frame
         frame.getContentPane().removeAll();
-        frame.setSize(600, 600);  // Adjust the size to match your previous layout
+        frame.setSize(600, 800);
         frame.setLayout(new BorderLayout());
 
         // Header Panel
         JPanel headerPanel = new JPanel();
         headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));  // Space around the header
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));  // More space around the header
 
-        JLabel headerLabel = new JLabel("Enter Password to Load Account", SwingConstants.CENTER);
+        JLabel headerLabel = new JLabel("Create Password", SwingConstants.CENTER);
         headerLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
         headerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         headerPanel.add(headerLabel);
 
-        JLabel descriptionLabel = new JLabel("<html>Please enter your password to decrypt and load your account.</html>",
+        JLabel descriptionLabel = new JLabel("<html>If you lose or forget the password, you will lose access to your account.<br>"
+                + "Keep the password extremely safe! Nobody will help you to recover your account once you lose the password.</html>",
                 SwingConstants.CENTER);
         descriptionLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
         descriptionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -394,11 +399,20 @@ public class App {
         centerPanel.setLayout(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(15, 15, 15, 15);  // Spacing between elements
+        gbc.insets = new Insets(15, 15, 15, 15);  // More spacing between elements
+
+        // Password Minimum Length Notice
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        gbc.gridwidth = 5; // Span the full width
+        JLabel minCharLabel = new JLabel("Password must not be empty.");
+        minCharLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        minCharLabel.setForeground(Color.RED); // Optional: Make the notice more prominent
+        centerPanel.add(minCharLabel, gbc);
 
         // Password Label
         gbc.gridx = 0;
-        gbc.gridy = 0;
+        gbc.gridy = 4;
         gbc.gridwidth = 2;
         JLabel passwordLabel = new JLabel("Password:");
         passwordLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
@@ -406,89 +420,164 @@ public class App {
 
         // Password Field
         gbc.gridx = 2;
-        gbc.gridy = 0;
+        gbc.gridy = 4;
         gbc.gridwidth = 3;
         JPasswordField passwordField = new JPasswordField(20);
-        passwordField.setPreferredSize(new Dimension(250, 30));  // Set the width of the password field
+        passwordField.setPreferredSize(new Dimension(250, 30));  // Increase the width of the password field
         centerPanel.add(passwordField, gbc);
 
-        // Add a gap
+        // Encryption Methods
         gbc.gridx = 0;
-        gbc.gridy = 1;
-        gbc.gridwidth = 5;
-        centerPanel.add(Box.createVerticalStrut(10), gbc);
+        gbc.gridy = 5;
+        gbc.gridwidth = 2;
+        JLabel encryptionLabel = new JLabel("Encryption Method(s):");
+        encryptionLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        centerPanel.add(encryptionLabel, gbc);
 
-        // Load Button
-        JButton loadButton = new JButton("Load Account");
-        loadButton.setFont(new Font("SansSerif", Font.PLAIN, 14));
-        loadButton.addActionListener(e -> {
-            String password = new String(passwordField.getPassword());
-            if (password != null && !password.isEmpty()) {
-                try {
-                    // Load the encrypted account file
-                    File encryptedFile = new File(filePath);
-                    byte[] encryptedData = Files.readAllBytes(encryptedFile.toPath());
+        // Encryption Methods Panel with more spacing
+        JPanel encryptionMethodsPanel = new JPanel();
+        encryptionMethodsPanel.setLayout(new GridLayout(3, 2, 10, 10));  // Adjusted for better spacing
+        JCheckBox aesCheckbox = new JCheckBox("AES");
+        JCheckBox serpentCheckbox = new JCheckBox("Serpent");
+        JCheckBox twofishCheckbox = new JCheckBox("Twofish");
+        JCheckBox camelliaCheckbox = new JCheckBox("Camellia");
+        JCheckBox kuzCheckbox = new JCheckBox("Kuznyechik");
 
-                    // Decrypt the file (reverse the encryption order)
-                    ArrayList<String> decryptionOrder = getDecryptionOrder(); // This should be your decryption order (reverse of encryption order)
+        encryptionMethodsPanel.add(aesCheckbox);
+        encryptionMethodsPanel.add(serpentCheckbox);
+        encryptionMethodsPanel.add(twofishCheckbox);
+        encryptionMethodsPanel.add(camelliaCheckbox);
+        encryptionMethodsPanel.add(kuzCheckbox);
 
-                    // Decrypt the data using the entered password
-                    byte[] decryptedData = decryptFileWithOrder(encryptedData, password, decryptionOrder);
-
-                    // Now parse the decrypted data
-                    String decryptedString = new String(decryptedData);
-                    String[] accountData = decryptedString.split(":");
-
-                    if (accountData.length >= 3) {
-                        String username = accountData[0];
-                        String description = accountData[1];
-                        String communicationKey = accountData[2];
-                        // Do something with these values
-                        JOptionPane.showMessageDialog(frame, "Account loaded successfully!");
-                    } else {
-                        JOptionPane.showMessageDialog(frame, "Invalid account data", "Error", JOptionPane.ERROR_MESSAGE);
-                    }
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(frame, "Decryption failed: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                }
-            } else {
-                JOptionPane.showMessageDialog(frame, "Password is required to load the account.", "Error", JOptionPane.ERROR_MESSAGE);
-            }
-        });
         gbc.gridx = 2;
-        gbc.gridy = 2;
+        gbc.gridy = 5;
         gbc.gridwidth = 3;
-        centerPanel.add(loadButton, gbc);
+        centerPanel.add(encryptionMethodsPanel, gbc);
+
+        // Encryption Order
+        gbc.gridx = 0;
+        gbc.gridy = 6;
+        gbc.gridwidth = 2;
+        JLabel orderLabel = new JLabel("Encryption Order:");
+        orderLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        centerPanel.add(orderLabel, gbc);
+
+        DefaultListModel<String> orderListModel = new DefaultListModel<>();
+        JList<String> orderList = new JList<>(orderListModel);
+        orderList.setVisibleRowCount(5);
+        orderList.setFixedCellHeight(20);
+        orderList.setFixedCellWidth(100);
+        JScrollPane scrollPane = new JScrollPane(orderList);
+
+        gbc.gridx = 2;
+        gbc.gridy = 6;
+        gbc.gridwidth = 3;
+        centerPanel.add(scrollPane, gbc);
+
+        // Add encryption methods to order lista
+        ActionListener addToOrder = e -> {
+            JCheckBox source = (JCheckBox) e.getSource();
+            if (source.isSelected()) {
+                orderListModel.addElement(source.getText());
+            } else {
+                orderListModel.removeElement(source.getText());
+            }
+        };
+
+        aesCheckbox.addActionListener(addToOrder);
+        serpentCheckbox.addActionListener(addToOrder);
+        twofishCheckbox.addActionListener(addToOrder);
+        camelliaCheckbox.addActionListener(addToOrder);
+        kuzCheckbox.addActionListener(addToOrder);
 
         frame.add(centerPanel, BorderLayout.CENTER);
 
         // Footer Panel
         JPanel footerPanel = new JPanel();
         footerPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 0));  // Use FlowLayout.CENTER for horizontal centering
-        footerPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));  // Padding
+        footerPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));  // Increased padding
 
         // Back Button
         JButton backButton = new JButton("Back");
         backButton.setFont(new Font("SansSerif", Font.PLAIN, 14));
         backButton.addActionListener(e -> {
-            mainMenu(frame);  // Call selectSecurityModules() when Back button is clicked
+            mainMenu(frame);
         });
+
+     // Continue Button
+        JButton continueButton = new JButton("Continue");
+        continueButton.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);  // Ensuring button is centered
+        continueButton.addActionListener(e -> {
+            // Get the password from the field
+            char[] pass = passwordField.getPassword();
+            String passString = new String(pass);
+
+            // Hash the password using SHA-256
+            byte[] passwordHash = hash.hashSHA256(passString);
+
+            // Get the selected encryption methods in order
+            List<String> selectedOrder = orderList.getSelectedValuesList();
+
+            // Reverse the selected order to get the decryption order
+            ArrayList<String> decryptionOrder = new ArrayList<>(selectedOrder);
+            Collections.reverse(decryptionOrder); // Reverse the order to match decryption logic
+
+            // Example encrypted data (you would replace this with actual data to decrypt)
+            byte[] encryptedData = null;
+            try {
+                encryptedData = getEncryptedData(filePath); // Load the encrypted data
+            } catch (IOException ioException) {
+                ioException.printStackTrace();
+                JOptionPane.showMessageDialog(frame, "Failed to load encrypted data.");
+                return;
+            }
+
+            try {
+                // Decrypt the data using the decryption order
+                byte[] decryptedData = decryptFileWithOrder(encryptedData, passwordHash, decryptionOrder);
+
+                // Convert decrypted data to a string assuming it was originally a text string
+                String decryptedText = new String(decryptedData, StandardCharsets.UTF_8); // Decode with UTF-8
+
+                // Print or display the decrypted text
+                System.out.println("Decrypted Data: " + decryptedText);  // Prints decrypted text
+                JOptionPane.showMessageDialog(frame, "Decrypted Data: \n" + decryptedText);
+
+                // You can add logic to handle the decrypted data, such as saving it or displaying it.
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(frame, "Decryption failed: " + ex.getMessage());
+            }
+        });
+
+
+        // Add buttons to footer panel (Back and Continue)
         footerPanel.add(backButton);
+        footerPanel.add(Box.createHorizontalStrut(10)); // Spacer between buttons
+        footerPanel.add(continueButton);
 
         frame.add(footerPanel, BorderLayout.SOUTH);
 
-        // Refresh the frame to display the new layout
         frame.revalidate();
         frame.repaint();
     }
 
+
+    // Decryption Functions
     private ArrayList<String> getDecryptionOrder() {
         ArrayList<String> decryptionOrder = new ArrayList<>();
+        // Add algorithms in reverse of encryption order
+        decryptionOrder.add("Kuznyechik");
+        decryptionOrder.add("Camellia");
+        decryptionOrder.add("Twofish");
+        decryptionOrder.add("Serpent");
+        decryptionOrder.add("AES");
         return decryptionOrder;
     }
 
-    private byte[] decryptFileWithOrder(byte[] encryptedData, String password, ArrayList<String> decryptionOrder) throws Exception {
-        // Decrypt the file data using the order of algorithms
+ // Decrypt Function with dynamic decryption order
+    private byte[] decryptFileWithOrder(byte[] encryptedData, byte[] password, ArrayList<String> decryptionOrder) throws Exception {
         byte[] decryptedData = encryptedData;
         for (String algorithm : decryptionOrder) {
             switch (algorithm) {
@@ -511,53 +600,61 @@ public class App {
                     throw new IllegalArgumentException("Unknown decryption algorithm: " + algorithm);
             }
         }
+
         return decryptedData;
     }
 
+    private void handleDecryptedData(byte[] decryptedData) {
+        // Convert decrypted data to a string assuming it was originally a text string
+        try {
+            String decryptedString = new String(decryptedData, StandardCharsets.UTF_8);
+            System.out.println("Decrypted Data: " + decryptedString);  // Prints decrypted text
+        } catch (Exception e) {
+            System.err.println("Error converting decrypted data: " + e.getMessage());
+        }
+    }
+
     // AES Decryption
-    private byte[] decryptWithAES(byte[] data, String password) throws Exception {
-        SecretKeySpec keySpec = new SecretKeySpec(password.getBytes(StandardCharsets.UTF_8), "AES");
-        Cipher cipher = Cipher.getInstance("AES");
+    private byte[] decryptWithEAS(byte[] data, byte[] password) throws Exception {
+        Security.addProvider(new BouncyCastleProvider());
+        Cipher cipher = Cipher.getInstance("AES", "BC");
+        SecretKeySpec keySpec = new SecretKeySpec(password, "AES");
         cipher.init(Cipher.DECRYPT_MODE, keySpec);
         return cipher.doFinal(data);
     }
 
-    // Serpent Decryption (Example with BouncyCastle)
-    private byte[] decryptWithSerpent(byte[] data, String password) throws Exception {
-        Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+    // Other decryption methods remain unchanged
+    private byte[] decryptWithSerpent(byte[] data, byte[] password) throws Exception {
+        Security.addProvider(new BouncyCastleProvider());
         Cipher cipher = Cipher.getInstance("Serpent", "BC");
-        SecretKeySpec keySpec = new SecretKeySpec(password.getBytes(StandardCharsets.UTF_8), "Serpent");
+        SecretKeySpec keySpec = new SecretKeySpec(password, "Serpent");
         cipher.init(Cipher.DECRYPT_MODE, keySpec);
         return cipher.doFinal(data);
     }
 
-    // Twofish Decryption (Example with BouncyCastle)
-    private byte[] decryptWithTwofish(byte[] data, String password) throws Exception {
-        Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+    private byte[] decryptWithTwofish(byte[] data, byte[] password) throws Exception {
+        Security.addProvider(new BouncyCastleProvider());
         Cipher cipher = Cipher.getInstance("Twofish", "BC");
-        SecretKeySpec keySpec = new SecretKeySpec(password.getBytes(StandardCharsets.UTF_8), "Twofish");
+        SecretKeySpec keySpec = new SecretKeySpec(password, "Twofish");
         cipher.init(Cipher.DECRYPT_MODE, keySpec);
         return cipher.doFinal(data);
     }
 
-    // Camellia Decryption (Example with BouncyCastle)
-    private byte[] decryptWithCamellia(byte[] data, String password) throws Exception {
-        Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+    private byte[] decryptWithCamellia(byte[] data, byte[] password) throws Exception {
+        Security.addProvider(new BouncyCastleProvider());
         Cipher cipher = Cipher.getInstance("Camellia", "BC");
-        SecretKeySpec keySpec = new SecretKeySpec(password.getBytes(StandardCharsets.UTF_8), "Camellia");
+        SecretKeySpec keySpec = new SecretKeySpec(password, "Camellia");
         cipher.init(Cipher.DECRYPT_MODE, keySpec);
         return cipher.doFinal(data);
     }
 
-    // Kuznyechik Decryption (Example with BouncyCastle)
-    private byte[] decryptWithKuznyechik(byte[] data, String password) throws Exception {
-        Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+    private byte[] decryptWithKuznyechik(byte[] data, byte[] password) throws Exception {
+        Security.addProvider(new BouncyCastleProvider());
         Cipher cipher = Cipher.getInstance("GOST3412-2015", "BC");
-        SecretKeySpec keySpec = new SecretKeySpec(password.getBytes(StandardCharsets.UTF_8), "GOST3412-2015");
+        SecretKeySpec keySpec = new SecretKeySpec(password, "GOST3412-2015");
         cipher.init(Cipher.DECRYPT_MODE, keySpec);
         return cipher.doFinal(data);
     }
-
 
     public static void main(String[] args) {
     	//We run the program through EventQueue with EDT (Event Dispatch Thread) to make program stable.

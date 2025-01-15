@@ -112,7 +112,7 @@ public class CreateAccount {
 public void createPassword(JFrame frame) {
     // Clear frame
     frame.getContentPane().removeAll();
-    frame.setSize(600, 600);  // Increased height to accommodate new UI elements
+    frame.setSize(600, 800);
     frame.setLayout(new BorderLayout());
 
     // Header Panel
@@ -288,60 +288,59 @@ public void createPassword(JFrame frame) {
     continueButton.setFont(new Font("SansSerif", Font.PLAIN, 14));
     continueButton.setAlignmentX(Component.CENTER_ALIGNMENT);  // Ensuring button is centered
     continueButton.addActionListener(e -> {
-    	char[] pass = passwordField.getPassword();
-    	String passString = new String(pass);  
-    	String password = hash.hashSHA256(passString);
+        char[] pass = passwordField.getPassword();
+        String passString = new String(pass);
+
+        // Hash the password using SHA-256
+        byte[] passwordHash = hash.hashSHA256(passString);
+
         username = usernameField.getText();
-        
+
         // Generate the random communication key
         String communicationKey = generateRandomKey();
 
-            // Generate SHA512 hash of the communication key
-        //hashedCommunicationKey = hash.hashSHA512(hash.hashSHA512(communicationKey));
+        String description = descriptionArea.getText();
 
-            // Set the description to the hashed communication key
-            String description = descriptionArea.getText();
-
-            if (username.isEmpty()) {
-                JOptionPane.showMessageDialog(frame, "Username cannot be empty!", "Error", JOptionPane.ERROR_MESSAGE);
-            } else if (pass.length == 0) {
-                JOptionPane.showMessageDialog(frame, "Password cannot be empty!", "Error", JOptionPane.ERROR_MESSAGE);
-            } else if (orderListModel.isEmpty()) {
-                JOptionPane.showMessageDialog(frame, "Select at least one encryption method!", "Error", JOptionPane.ERROR_MESSAGE);
-            } else {
-                // Get the encryption order
-                ArrayList<String> encryptionOrder = new ArrayList<>();
-                for (int i = 0; i < orderListModel.size(); i++) {
-                    encryptionOrder.add(orderListModel.getElementAt(i));
-                }
-
-                try {
-                    // Format the content to include username and the hashed communication key
-                    String content = username + ":" + description + ":" + communicationKey;
-
-                    // Create the file
-                    File keyFile = new File(System.getProperty("user.home") + File.separator + "communication_key.txt");
-                    try (FileWriter writer = new FileWriter(keyFile)) {
-                        writer.write(content);
-                    }
-
-                    // Encrypt the file
-                    byte[] encryptedData = encryptFileWithOrder(keyFile, new String(password), encryptionOrder);
-
-                    // Save the encrypted file
-                    File encryptedFile = new File(System.getProperty("user.home") + File.separator + "communication_key_encrypted.txt");
-                    try (FileOutputStream fos = new FileOutputStream(encryptedFile)) {
-                        fos.write(encryptedData);
-                    }
-
-                    JOptionPane.showMessageDialog(frame, "File created and encrypted successfully:\n" + encryptedFile.getAbsolutePath(), 
-                                                  "Success", JOptionPane.INFORMATION_MESSAGE);
-                    setupSuccess(frame, null); // Proceed to the next step
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(frame, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                    ex.printStackTrace();
-                }
+        if (username.isEmpty()) {
+            JOptionPane.showMessageDialog(frame, "Username cannot be empty!", "Error", JOptionPane.ERROR_MESSAGE);
+        } else if (pass.length == 0) {
+            JOptionPane.showMessageDialog(frame, "Password cannot be empty!", "Error", JOptionPane.ERROR_MESSAGE);
+        } else if (orderListModel.isEmpty()) {
+            JOptionPane.showMessageDialog(frame, "Select at least one encryption method!", "Error", JOptionPane.ERROR_MESSAGE);
+        } else {
+            // Get the encryption order
+            ArrayList<String> encryptionOrder = new ArrayList<>();
+            for (int i = 0; i < orderListModel.size(); i++) {
+                encryptionOrder.add(orderListModel.getElementAt(i));
             }
+
+            try {
+                // Format the content to include username and the hashed communication key
+                String content = username + ":" + description + ":" + communicationKey;
+
+                // Create the file with the content
+                File keyFile = new File(System.getProperty("user.home") + File.separator + "communication_key.txt");
+                try (FileWriter writer = new FileWriter(keyFile)) {
+                    writer.write(content);
+                }
+
+                // Encrypt the file using the password hash (byte array)
+                byte[] encryptedData = encryptFileWithOrder(keyFile, passwordHash, encryptionOrder);
+
+                // Save the encrypted file
+                File encryptedFile = new File(System.getProperty("user.home") + File.separator + "communication_key_encrypted.txt");
+                try (FileOutputStream fos = new FileOutputStream(encryptedFile)) {
+                    fos.write(encryptedData);
+                }
+
+                JOptionPane.showMessageDialog(frame, "File created and encrypted successfully:\n" + encryptedFile.getAbsolutePath(),
+                        "Success", JOptionPane.INFORMATION_MESSAGE);
+                setupSuccess(frame, null); // Proceed to the next step
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(frame, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                ex.printStackTrace();
+            }
+        }
     });
 
     // Add buttons to footer panel (Back and Continue)
@@ -363,81 +362,79 @@ private String generateRandomKey() {
  String key = Base64.getEncoder().encodeToString(keyBytes); // UTF-8 compatible string
  return hash.hashSHA512(key); // Hash the key using SHA-512
 }
+private byte[] encryptFileWithOrder(File file, byte[] password, ArrayList<String> encryptionOrder) throws Exception {
+    // Read the file's content
+    byte[] fileContent = Files.readAllBytes(file.toPath());
 
-//Encryption Functionality
-private byte[] encryptFileWithOrder(File file, String password, ArrayList<String> encryptionOrder) throws Exception {
- // Read the file's content
- byte[] fileContent = Files.readAllBytes(file.toPath());
+    // Apply encryption for each algorithm in the order
+    byte[] encryptedData = fileContent;
+    for (String algorithm : encryptionOrder) {
+        switch (algorithm) {
+            case "AES":
+                encryptedData = encryptWithAES(encryptedData, password);
+                break;
+            case "Serpent":
+                encryptedData = encryptWithSerpent(encryptedData, password);
+                break;
+            case "Twofish":
+                encryptedData = encryptWithTwofish(encryptedData, password);
+                break;
+            case "Camellia":
+                encryptedData = encryptWithCamellia(encryptedData, password);
+                break;
+            case "Kuznyechik":
+                encryptedData = encryptWithKuznyechik(encryptedData, password);
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown encryption algorithm: " + algorithm);
+        }
+    }
 
- // Apply encryption for each algorithm in the order
- byte[] encryptedData = fileContent;
- for (String algorithm : encryptionOrder) {
-     switch (algorithm) {
-         case "AES":
-             encryptedData = encryptWithAES(encryptedData, password);
-             break;
-         case "Serpent":
-             encryptedData = encryptWithSerpent(encryptedData, password);
-             break;
-         case "Twofish":
-             encryptedData = encryptWithTwofish(encryptedData, password);
-             break;
-         case "Camellia":
-             encryptedData = encryptWithCamellia(encryptedData, password);
-             break;
-         case "Kuznyechik":
-             encryptedData = encryptWithKuznyechik(encryptedData, password);
-             break;
-         default:
-             throw new IllegalArgumentException("Unknown encryption algorithm: " + algorithm);
-     }
- }
-
- return encryptedData;
+    return encryptedData;
 }
 
-//AES Encryption
-private byte[] encryptWithAES(byte[] data, String password) throws Exception {
- SecretKeySpec keySpec = new SecretKeySpec(password.getBytes(StandardCharsets.UTF_8), "AES");
- Cipher cipher = Cipher.getInstance("AES");
- cipher.init(Cipher.ENCRYPT_MODE, keySpec);
- return cipher.doFinal(data);
+// AES Encryption
+private byte[] encryptWithAES(byte[] data, byte[] password) throws Exception {
+    SecretKeySpec keySpec = new SecretKeySpec(password, "AES");
+    Cipher cipher = Cipher.getInstance("AES");
+    cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+    return cipher.doFinal(data);
 }
 
-//Serpent Encryption (Example with BouncyCastle)
-private byte[] encryptWithSerpent(byte[] data, String password) throws Exception {
- Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
- Cipher cipher = Cipher.getInstance("Serpent", "BC");
- SecretKeySpec keySpec = new SecretKeySpec(password.getBytes(StandardCharsets.UTF_8), "Serpent");
- cipher.init(Cipher.ENCRYPT_MODE, keySpec);
- return cipher.doFinal(data);
+// Serpent Encryption (Example with BouncyCastle)
+private byte[] encryptWithSerpent(byte[] data, byte[] password) throws Exception {
+    Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+    Cipher cipher = Cipher.getInstance("Serpent", "BC");
+    SecretKeySpec keySpec = new SecretKeySpec(password, "Serpent");
+    cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+    return cipher.doFinal(data);
 }
 
-//Twofish Encryption (Example with BouncyCastle)
-private byte[] encryptWithTwofish(byte[] data, String password) throws Exception {
- Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
- Cipher cipher = Cipher.getInstance("Twofish", "BC");
- SecretKeySpec keySpec = new SecretKeySpec(password.getBytes(StandardCharsets.UTF_8), "Twofish");
- cipher.init(Cipher.ENCRYPT_MODE, keySpec);
- return cipher.doFinal(data);
+// Twofish Encryption (Example with BouncyCastle)
+private byte[] encryptWithTwofish(byte[] data, byte[] password) throws Exception {
+    Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+    Cipher cipher = Cipher.getInstance("Twofish", "BC");
+    SecretKeySpec keySpec = new SecretKeySpec(password, "Twofish");
+    cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+    return cipher.doFinal(data);
 }
 
-//Camellia Encryption (Example with BouncyCastle)
-private byte[] encryptWithCamellia(byte[] data, String password) throws Exception {
- Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
- Cipher cipher = Cipher.getInstance("Camellia", "BC");
- SecretKeySpec keySpec = new SecretKeySpec(password.getBytes(StandardCharsets.UTF_8), "Camellia");
- cipher.init(Cipher.ENCRYPT_MODE, keySpec);
- return cipher.doFinal(data);
+// Camellia Encryption (Example with BouncyCastle)
+private byte[] encryptWithCamellia(byte[] data, byte[] password) throws Exception {
+    Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+    Cipher cipher = Cipher.getInstance("Camellia", "BC");
+    SecretKeySpec keySpec = new SecretKeySpec(password, "Camellia");
+    cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+    return cipher.doFinal(data);
 }
 
-//Kuznyechik Encryption (Example with BouncyCastle)
-private byte[] encryptWithKuznyechik(byte[] data, String password) throws Exception {
- Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
- Cipher cipher = Cipher.getInstance("GOST3412-2015", "BC");
- SecretKeySpec keySpec = new SecretKeySpec(password.getBytes(StandardCharsets.UTF_8), "GOST3412-2015");
- cipher.init(Cipher.ENCRYPT_MODE, keySpec);
- return cipher.doFinal(data);
+// Kuznyechik Encryption (Example with BouncyCastle)
+private byte[] encryptWithKuznyechik(byte[] data, byte[] password) throws Exception {
+    Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+    Cipher cipher = Cipher.getInstance("GOST3412-2015", "BC");
+    SecretKeySpec keySpec = new SecretKeySpec(password, "GOST3412-2015");
+    cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+    return cipher.doFinal(data);
 }
 
 private void updateDeviceList(JPanel createAccountPanel) {
