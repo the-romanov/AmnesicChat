@@ -34,6 +34,10 @@ public class CreateAccount {
     private boolean strictMode = false;
     private List<String> hashedSerials = new ArrayList<>();
     
+    public List<String> getHashedSerials(){
+    	return hashedSerials;
+    }
+    
     public String username = "";
     public String hashedCommunicationKey = "";
     
