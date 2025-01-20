@@ -46,6 +46,7 @@ public class App {
 	//UI Defaults
 	public URL fileButtonIconURL = getClass().getResource("/images/File.png");
 	public URL labelURL = getClass().getResource("/images/AmnesicLabel.png");
+	public URL gearURL = getClass().getResource("/images/gear.png");
     private JFrame frame; //JFrame is private so that we can isolate the variable to prevent potential tampering.
     public JPanel appPanel = new JPanel(); // Stops creating new panels unnecessarily.
     public int baseWidth = 650;
@@ -74,6 +75,9 @@ public class App {
     //Access the Peer To Peer instance
     static JoinPeerToPeer peerToPeer = CentralManager.getJoinPeerToPeer();
     
+    // Access Settings
+    static Settings settings = CentralManager.getSettings();
+    
     // Variables for account creation
     public boolean strictMode = false; // Enforce strict account protection
     public List<String> hashedSerials = new ArrayList<>(); //Device ID encryption key
@@ -89,10 +93,6 @@ public class App {
         JPanel panel = new JPanel();
         panel.setLayout(null); // Using null layout for custom positioning
 
-        // Calculate center points
-        int frameWidth = frame.getWidth();
-        int frameHeight = frame.getHeight();
-
         // Add AmnesicChat label
         JLabel imageLabel = new JLabel();
         if (labelURL != null) {
@@ -103,7 +103,7 @@ public class App {
         }
         int imageLabelWidth = 650;
         int imageLabelHeight = 120;
-        imageLabel.setBounds((frameWidth - imageLabelWidth) / 2, 20, imageLabelWidth, imageLabelHeight);
+        imageLabel.setBounds((frame.getWidth() - imageLabelWidth) / 2, 20, imageLabelWidth, imageLabelHeight);
         panel.add(imageLabel);
 
         // Add username label
@@ -111,7 +111,7 @@ public class App {
         usernameLabel.setFont(new Font("Arial", Font.PLAIN, 14));
         int usernameLabelWidth = 400;
         int usernameLabelHeight = 20;
-        usernameLabel.setBounds((frameWidth - usernameLabelWidth) / 2, 160, usernameLabelWidth, usernameLabelHeight);
+        usernameLabel.setBounds((frame.getWidth() - usernameLabelWidth) / 2, 160, usernameLabelWidth, usernameLabelHeight);
         panel.add(usernameLabel);
 
         // Add fingerprint label
@@ -119,15 +119,15 @@ public class App {
         fingerprintLabel.setFont(new Font("Arial", Font.PLAIN, 14));
         int fingerprintLabelWidth = 400;
         int fingerprintLabelHeight = 20;
-        fingerprintLabel.setBounds((frameWidth - fingerprintLabelWidth) / 2, 190, fingerprintLabelWidth, fingerprintLabelHeight);
+        fingerprintLabel.setBounds((frame.getWidth() - fingerprintLabelWidth) / 2, 190, fingerprintLabelWidth, fingerprintLabelHeight);
         panel.add(fingerprintLabel);
 
         // Add fingerprint info label
         JLabel fingerprintInfo = new JLabel("<html>This fingerprint above is the public fingerprint. It can be shared with others to add you as a contact, just like saving a phone number.</html>");
         fingerprintInfo.setFont(new Font("Arial", Font.ITALIC, 12));
         int fingerprintInfoWidth = 550;
-        int fingerprintInfoHeight = 40; // Adjusted for multi-line text
-        fingerprintInfo.setBounds((frameWidth - fingerprintInfoWidth) / 2, 220, fingerprintInfoWidth, fingerprintInfoHeight);
+        int fingerprintInfoHeight = 40;
+        fingerprintInfo.setBounds((frame.getWidth() - fingerprintInfoWidth) / 2, 220, fingerprintInfoWidth, fingerprintInfoHeight);
         panel.add(fingerprintInfo);
 
         // Create "Copy Fingerprint" button
@@ -135,99 +135,65 @@ public class App {
         copyFingerprintButton.setFont(new Font("Arial", Font.PLAIN, 14));
         int buttonWidth = 150;
         int buttonHeight = 30;
-        copyFingerprintButton.setBounds((frameWidth - buttonWidth) / 2, 260, buttonWidth, buttonHeight);
+        copyFingerprintButton.setBounds((frame.getWidth() - buttonWidth) / 2, 260, buttonWidth, buttonHeight);
 
-        // Action listener to copy fingerprint to clipboard
-        copyFingerprintButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                StringSelection stringSelection = new StringSelection(publicFingerprint);
-                Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-                clipboard.setContents(stringSelection, null);
+        copyFingerprintButton.addActionListener(e -> {
+            StringSelection stringSelection = new StringSelection(publicFingerprint);
+            Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+            clipboard.setContents(stringSelection, null);
 
-                JOptionPane.showMessageDialog(frame, "Fingerprint copied to clipboard!", "Success", JOptionPane.INFORMATION_MESSAGE);
-            }
+            JOptionPane.showMessageDialog(frame, "Fingerprint copied to clipboard!", "Success", JOptionPane.INFORMATION_MESSAGE);
         });
 
-        // Add the "Copy Fingerprint" button to the panel
         panel.add(copyFingerprintButton);
 
-        // Add buttons
-        String[] buttonLabels = {"JOIN A SERVER", "PEER TO PEER", "HOST A SERVER", "CHANGE ACCOUNT", "QUIT"};
+        // Add main buttons
+        String[] buttonLabels = {"JOIN A SERVER", "PEER TO PEER", "HOST A SERVER", "CHANGE ACCOUNT", "SETTINGS", "QUIT"};
         int buttonSpacing = 40;
-        int initialYPosition = 300; // Starting y-position for the other buttons
+        int initialYPosition = 300;
 
         for (String text : buttonLabels) {
             JButton button = new JButton(text);
             button.setFont(new Font("Arial", Font.PLAIN, 14));
-            button.setBounds((frameWidth - buttonWidth) / 2, initialYPosition, buttonWidth, buttonHeight);
+            button.setBounds((frame.getWidth() - buttonWidth) / 2, initialYPosition, buttonWidth, buttonHeight);
 
-            // Action listener for "Quit" button
-            if (text.equals("QUIT")) {
-                button.addActionListener(new ActionListener() {
-                    public void actionPerformed(ActionEvent e) {
-                        System.exit(0); // Exit the program
-                    }
-                });
-            }
-
-            // Action listener for "JOIN A SERVER" button
-            if (text.equals("JOIN A SERVER")) {
-                button.addActionListener(new ActionListener() {
-                    public void actionPerformed(ActionEvent e) {
-                        joinServer.createJoinServerUI(frame);
-                    }
-                });
-            }
-
-            // Action listener for "PEER TO PEER" button
-            if (text.equals("PEER TO PEER")) {
-                button.addActionListener(new ActionListener() {
-                    public void actionPerformed(ActionEvent e) {
-                        peerToPeer.peerToPeerUI(frame); // Call peerToPeerUI
-                    }
-                });
-            }
-
-            // Action listener for "CHANGE ACCOUNT" button
-            if (text.equals("CHANGE ACCOUNT")) {
-                button.addActionListener(new ActionListener() {
-                    public void actionPerformed(ActionEvent e) {
-                        mainMenu(frame); // Call the mainMenu method to return to the main menu
-                    }
-                });
-            }
-
-            // Action listener for "HOST A SERVER" button
-            if (text.equals("HOST A SERVER")) {
-                button.addActionListener(new ActionListener() {
-                    public void actionPerformed(ActionEvent e) {
-                        // Create an instance of CreateServer
+            switch (text) {
+                case "QUIT":
+                    button.addActionListener(e -> System.exit(0));
+                    break;
+                case "JOIN A SERVER":
+                    button.addActionListener(e -> joinServer.createJoinServerUI(frame));
+                    break;
+                case "PEER TO PEER":
+                    button.addActionListener(e -> peerToPeer.peerToPeerUI(frame));
+                    break;
+                case "CHANGE ACCOUNT":
+                    button.addActionListener(e -> mainMenu(frame));
+                    break;
+                case "HOST A SERVER":
+                    button.addActionListener(e -> {
                         CreateServer createServer = new CreateServer();
-
-                        // Call createServer1 method
                         createServer.createServer1(frame);
-                    }
-                });
+                    });
+                    break;
+                case "SETTINGS":
+                	button.addActionListener(e -> {
+                        settings.settingsUI();
+                	});
+                	break;
             }
 
             panel.add(button);
             initialYPosition += buttonHeight + buttonSpacing;
         }
 
-        // Add settings gear icon at the top right of the screen
-        JLabel settingsLabel = new JLabel();
-        ImageIcon gearIcon = new ImageIcon("/images/gear.png");
-        settingsLabel.setIcon(gearIcon);
-        int settingsIconSize = 30;
-        settingsLabel.setBounds(frame.getWidth() - settingsIconSize - 20, 20, settingsIconSize, settingsIconSize); // Positioned top-right
-        panel.add(settingsLabel);
-
         // Add panel to frame
         frame.add(panel);
+
         frame.revalidate();
         frame.repaint();
     }
-
+    
     public void mainMenu(JFrame frame) {
         // Ensure this method runs on EDT (Event Dispatch Thread for stability of program)
         SwingUtilities.invokeLater(new Runnable() {
@@ -406,8 +372,10 @@ public class App {
             headerPanel.add(headerLabel);
 
             JLabel descriptionLabel = new JLabel(
-                    "<html>If the file is encrypted, enter the password, decryption order,<br>"
-                            + "and select the devices you used to lock the account.</html>",
+                    "<html>\n"
+                    + "Use the password that you have created when making the account<br>"
+                    + "to unlock the account file. Also input the encryption method you<br>"
+                    + "have used when creating your account file along with the password</html>",
                     SwingConstants.CENTER);
             descriptionLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
             descriptionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
