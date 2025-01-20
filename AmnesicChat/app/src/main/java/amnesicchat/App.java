@@ -5,6 +5,8 @@ import java.util.*;
 import java.util.List;
 import java.util.Arrays;
 import javax.swing.*;
+import java.security.Key;
+import java.util.stream.Collectors;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.awt.Toolkit;
@@ -19,6 +21,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.security.Security;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import java.io.IOException;
+import javax.crypto.spec.IvParameterSpec;
 
 public class App {
 	
@@ -73,7 +76,7 @@ public class App {
     
     // Variables for account creation
     public boolean strictMode = false; // Enforce strict account protection
-    public List<String> hashedSerials = null; //Device ID encryption key
+    public List<String> hashedSerials = new ArrayList<>(); //Device ID encryption key
 
     public void loggedInMenu(JFrame frame, String username, String publicFingerprint) {
         // Clear frame
@@ -213,7 +216,7 @@ public class App {
 
         // Add settings gear icon at the top right of the screen
         JLabel settingsLabel = new JLabel();
-        ImageIcon gearIcon = new ImageIcon("/images/gear.png"); // Load your gear icon image
+        ImageIcon gearIcon = new ImageIcon("/images/gear.png");
         settingsLabel.setIcon(gearIcon);
         int settingsIconSize = 30;
         settingsLabel.setBounds(frame.getWidth() - settingsIconSize - 20, 20, settingsIconSize, settingsIconSize); // Positioned top-right
@@ -371,32 +374,25 @@ public class App {
 
             // Check if the content is plain text (ASCII)
             if (isASCII(fileContent)) {
-                // Convert the byte array to string (UTF-8 encoding)
+                // Handle plain-text loading
                 String text = new String(fileContent, StandardCharsets.UTF_8);
-
-                // Split the text based on the colon ":"
                 String[] parts = text.split(":");
 
                 if (parts.length >= 3) {
-                    // Extract username and communication key
-                    String username = parts[0];  // First part is username
-                    String communicationKey = parts[2];  // Third part is the communication key
-
-                    // Hash the communication key twice using SHA-512
+                    String username = parts[0];
+                    String communicationKey = parts[2];
                     String pubKey = hash.hashSHA512(hash.hashSHA512(communicationKey));
 
-                    // Call loggedInMenu with the parsed username and pubKey
                     loggedInMenu(frame, username, "GPG Key Needed");
                 } else {
-                    // Handle error if the format doesn't match the expected pattern
                     JOptionPane.showMessageDialog(frame, "Invalid format in the file.", "Error", JOptionPane.ERROR_MESSAGE);
                 }
-                return; // Exit the method to prevent further UI setup
+                return;
             }
 
-            // If the file is not plain text, proceed to decryption UI
+            // Proceed to decryption UI
             frame.getContentPane().removeAll();
-            frame.setSize(600, 600);
+            frame.setSize(600, 700);
             frame.setLayout(new BorderLayout());
 
             // Header Panel
@@ -410,8 +406,8 @@ public class App {
             headerPanel.add(headerLabel);
 
             JLabel descriptionLabel = new JLabel(
-                    "<html>If the file is encrypted, enter the password and decryption order.<br>"
-                            + "If the file contains plain text or ASCII, it will be loaded automatically.</html>",
+                    "<html>If the file is encrypted, enter the password, decryption order,<br>"
+                            + "and select the devices you used to lock the account.</html>",
                     SwingConstants.CENTER);
             descriptionLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
             descriptionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -442,11 +438,48 @@ public class App {
             passwordField.setPreferredSize(new Dimension(250, 30));
             centerPanel.add(passwordField, gbc);
 
-            // Encryption Methods Panel
+            // Device Selection
             gbc.gridx = 0;
             gbc.gridy = 5;
             gbc.gridwidth = 2;
-            JLabel encryptionLabel = new JLabel("Encryption Method(s):");
+            JLabel deviceLabel = new JLabel("Select Devices:");
+            deviceLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+            centerPanel.add(deviceLabel, gbc);
+
+            JPanel devicePanel = new JPanel();
+            devicePanel.setLayout(new GridLayout(0, 1, 10, 10));
+
+            List<String> deviceNames = createAccount.getStorageDeviceNames();
+            Map<String, String> diskToSerialMap = new HashMap<>();
+            for (String device : deviceNames) {
+                diskToSerialMap.put(device, "Serial-" + device.hashCode());
+            }
+
+            List<String> selectedSerials = new ArrayList<>();
+            for (String deviceName : deviceNames) {
+                JToggleButton deviceToggleButton = new JToggleButton(deviceName);
+
+                deviceToggleButton.addActionListener(e -> {
+                    if (deviceToggleButton.isSelected()) {
+                        selectedSerials.add(diskToSerialMap.get(deviceName));
+                    } else {
+                        selectedSerials.remove(diskToSerialMap.get(deviceName));
+                    }
+                });
+
+                devicePanel.add(deviceToggleButton);
+            }
+
+            gbc.gridx = 2;
+            gbc.gridy = 5;
+            gbc.gridwidth = 3;
+            centerPanel.add(devicePanel, gbc);
+
+            // Encryption Methods
+            gbc.gridx = 0;
+            gbc.gridy = 6;
+            gbc.gridwidth = 2;
+            JLabel encryptionLabel = new JLabel("Encryption Methods:");
             encryptionLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
             centerPanel.add(encryptionLabel, gbc);
 
@@ -465,31 +498,27 @@ public class App {
             encryptionMethodsPanel.add(kuzCheckbox);
 
             gbc.gridx = 2;
-            gbc.gridy = 5;
+            gbc.gridy = 6;
             gbc.gridwidth = 3;
             centerPanel.add(encryptionMethodsPanel, gbc);
 
-            // Encryption Order
+            // Decryption Order
             gbc.gridx = 0;
-            gbc.gridy = 6;
+            gbc.gridy = 7;
             gbc.gridwidth = 2;
-            JLabel orderLabel = new JLabel("Encryption Order:");
+            JLabel orderLabel = new JLabel("Decryption Order:");
             orderLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
             centerPanel.add(orderLabel, gbc);
 
             DefaultListModel<String> orderListModel = new DefaultListModel<>();
             JList<String> orderList = new JList<>(orderListModel);
-            orderList.setVisibleRowCount(5);
-            orderList.setFixedCellHeight(20);
-            orderList.setFixedCellWidth(100);
             JScrollPane scrollPane = new JScrollPane(orderList);
 
             gbc.gridx = 2;
-            gbc.gridy = 6;
+            gbc.gridy = 7;
             gbc.gridwidth = 3;
             centerPanel.add(scrollPane, gbc);
 
-            // Add encryption methods to order list
             ActionListener addToOrder = e -> {
                 JCheckBox source = (JCheckBox) e.getSource();
                 if (source.isSelected()) {
@@ -510,64 +539,73 @@ public class App {
             // Footer Panel
             JPanel footerPanel = new JPanel();
             footerPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 0));
-            footerPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
             JButton backButton = new JButton("Back");
-            backButton.setFont(new Font("SansSerif", Font.PLAIN, 14));
             backButton.addActionListener(e -> mainMenu(frame));
 
             JButton continueButton = new JButton("Continue");
-            continueButton.setFont(new Font("SansSerif", Font.PLAIN, 14));
             continueButton.addActionListener(e -> {
                 try {
                     char[] pass = passwordField.getPassword();
                     if (pass.length == 0) {
-                        JOptionPane.showMessageDialog(frame, "Password is required for decryption.", "Error", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(frame, "Password is required.", "Error", JOptionPane.ERROR_MESSAGE);
                         return;
                     }
 
+                    // Hash the serial numbers, sort them, and pass them to the next function
+                    hashedSerials = selectedSerials.stream()
+                        .map(hash::hashSHA512)
+                        .sorted()
+                        .collect(Collectors.toList());
+                    
+                    // Hash the password
                     String passString = new String(pass);
                     byte[] passwordHash = hash.hashSHA256(passString);
 
-                    // Get decryption order from the selected items in the order list
+                    // Create the list of keys (hashedSerials and passwordHash)
+                    List<byte[]> keys = new ArrayList<>();
+                    
+                    keys.add(passwordHash);  // Add the password hash to the keys
+                    if (hashedSerials != null) {
+                        String serials = String.join(",", hashedSerials); // Combine serials into a single string
+                        keys.add(hash.hashSHA256(serials));              // Hash the serials and add to the list
+                    }
+
+                    
+                    // Reverse the selected encryption order for decryption
                     ArrayList<String> selectedOrder = new ArrayList<>();
                     for (int i = 0; i < orderListModel.size(); i++) {
                         selectedOrder.add(orderListModel.getElementAt(i));
                     }
-                    Collections.reverse(selectedOrder); // Reverse for decryption order
 
-                    byte[] decryptedData = decryptFileWithOrder(fileContent, passwordHash, selectedOrder);
+                    // Decrypt the file using the keys and selected order
+                    byte[] decryptedData = decryptFileWithOrder(fileContent, keys, selectedOrder);
+
+                    // Parse the decrypted data
                     String decryptedText = new String(decryptedData, StandardCharsets.UTF_8);
-
-                    // Process decrypted text for username and pubKey
                     String[] parts = decryptedText.split(":");
                     if (parts.length >= 3) {
-                        String username = parts[0];  // First part is username
-                        String communicationKey = parts[2];  // Third part is the communication key
-
-                        // Hash the communication key twice using SHA-512
+                        String username = parts[0];
+                        String communicationKey = parts[2];
                         String pubKey = hash.hashSHA512(hash.hashSHA512(communicationKey));
 
-                        // Call loggedInMenu with the parsed username and pubKey
                         loggedInMenu(frame, username, "GPG Key Needed");
                     } else {
-                        JOptionPane.showMessageDialog(frame, "Invalid format in the decrypted file.", "Error", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(frame, "Invalid decrypted file format.", "Error", JOptionPane.ERROR_MESSAGE);
                     }
                 } catch (Exception ex) {
-                    ex.printStackTrace();
                     JOptionPane.showMessageDialog(frame, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    ex.printStackTrace();
                 }
             });
 
             footerPanel.add(backButton);
-            footerPanel.add(Box.createHorizontalStrut(10));
             footerPanel.add(continueButton);
-
             frame.add(footerPanel, BorderLayout.SOUTH);
+
             frame.revalidate();
             frame.repaint();
         } catch (Exception ex) {
-            ex.printStackTrace();
             JOptionPane.showMessageDialog(frame, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
@@ -594,33 +632,36 @@ public class App {
     }
 
  // Decrypt Function with dynamic decryption order
-    private byte[] decryptFileWithOrder(byte[] encryptedData, byte[] password, ArrayList<String> decryptionOrder) throws Exception {
+    private byte[] decryptFileWithOrder(byte[] encryptedData, List<byte[]> keys, ArrayList<String> encryptionOrder) throws Exception {
         byte[] decryptedData = encryptedData;
-        for (String algorithm : decryptionOrder) {
+
+        // Reverse the order for decryption
+        Collections.reverse(encryptionOrder);
+
+        for (String algorithm : encryptionOrder) {
             switch (algorithm) {
                 case "AES":
-                    decryptedData = decryptWithAES(decryptedData, password);
+                    decryptedData = decryptWithAES(decryptedData, keys);
                     break;
                 case "Serpent":
-                    decryptedData = decryptWithSerpent(decryptedData, password);
+                    decryptedData = decryptWithSerpent(decryptedData, keys);
                     break;
                 case "Twofish":
-                    decryptedData = decryptWithTwofish(decryptedData, password);
+                    decryptedData = decryptWithTwofish(decryptedData, keys);
                     break;
                 case "Camellia":
-                    decryptedData = decryptWithCamellia(decryptedData, password);
+                    decryptedData = decryptWithCamellia(decryptedData, keys);
                     break;
                 case "Kuznyechik":
-                    decryptedData = decryptWithKuznyechik(decryptedData, password);
+                    decryptedData = decryptWithKuznyechik(decryptedData, keys);
                     break;
                 default:
                     throw new IllegalArgumentException("Unknown decryption algorithm: " + algorithm);
             }
         }
-
         return decryptedData;
     }
-
+    
     private void handleDecryptedData(byte[] decryptedData) {
         // Convert decrypted data to a string assuming it was originally a text string
         try {
@@ -631,46 +672,84 @@ public class App {
         }
     }
 
-    // AES Decryption
-    private byte[] decryptWithAES(byte[] data, byte[] password) throws Exception {
-        Security.addProvider(new BouncyCastleProvider());
-        Cipher cipher = Cipher.getInstance("AES", "BC");
-        SecretKeySpec keySpec = new SecretKeySpec(password, "AES");
-        cipher.init(Cipher.DECRYPT_MODE, keySpec);
-        return cipher.doFinal(data);
+    public byte[] decryptWithAES(byte[] encryptedData, List<byte[]> keys) throws Exception {
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        byte[] decryptedData = encryptedData;
+
+        // Decrypt using the keys in reverse order
+        for (int i = keys.size() - 1; i >= 0; i--) {
+            SecretKeySpec keySpec = new SecretKeySpec(keys.get(i), "AES");
+            IvParameterSpec ivSpec = new IvParameterSpec(new byte[16]);
+
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+            decryptedData = cipher.doFinal(decryptedData);
+        }
+
+        return decryptedData;
     }
 
-    // Other decryption methods remain unchanged
-    private byte[] decryptWithSerpent(byte[] data, byte[] password) throws Exception {
-        Security.addProvider(new BouncyCastleProvider());
-        Cipher cipher = Cipher.getInstance("Serpent", "BC");
-        SecretKeySpec keySpec = new SecretKeySpec(password, "Serpent");
-        cipher.init(Cipher.DECRYPT_MODE, keySpec);
-        return cipher.doFinal(data);
+    public byte[] decryptWithSerpent(byte[] encryptedData, List<byte[]> keys) throws Exception {
+        Cipher cipher = Cipher.getInstance("Serpent/CBC/PKCS7Padding");
+        byte[] decryptedData = encryptedData;
+
+        // Decrypt using the keys in reverse order
+        for (int i = keys.size() - 1; i >= 0; i--) {
+            SecretKeySpec keySpec = new SecretKeySpec(keys.get(i), "Serpent");
+            IvParameterSpec ivSpec = new IvParameterSpec(new byte[16]);
+
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+            decryptedData = cipher.doFinal(decryptedData);
+        }
+
+        return decryptedData;
     }
 
-    private byte[] decryptWithTwofish(byte[] data, byte[] password) throws Exception {
-        Security.addProvider(new BouncyCastleProvider());
-        Cipher cipher = Cipher.getInstance("Twofish", "BC");
-        SecretKeySpec keySpec = new SecretKeySpec(password, "Twofish");
-        cipher.init(Cipher.DECRYPT_MODE, keySpec);
-        return cipher.doFinal(data);
+    public byte[] decryptWithTwofish(byte[] encryptedData, List<byte[]> keys) throws Exception {
+        Cipher cipher = Cipher.getInstance("Twofish/CBC/PKCS7Padding");
+        byte[] decryptedData = encryptedData;
+
+        // Decrypt using the keys in reverse order
+        for (int i = keys.size() - 1; i >= 0; i--) {
+            SecretKeySpec keySpec = new SecretKeySpec(keys.get(i), "Twofish");
+            IvParameterSpec ivSpec = new IvParameterSpec(new byte[16]);
+
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+            decryptedData = cipher.doFinal(decryptedData);
+        }
+
+        return decryptedData;
     }
 
-    private byte[] decryptWithCamellia(byte[] data, byte[] password) throws Exception {
-        Security.addProvider(new BouncyCastleProvider());
-        Cipher cipher = Cipher.getInstance("Camellia", "BC");
-        SecretKeySpec keySpec = new SecretKeySpec(password, "Camellia");
-        cipher.init(Cipher.DECRYPT_MODE, keySpec);
-        return cipher.doFinal(data);
+    public byte[] decryptWithCamellia(byte[] encryptedData, List<byte[]> keys) throws Exception {
+        Cipher cipher = Cipher.getInstance("Camellia/CBC/PKCS7Padding");
+        byte[] decryptedData = encryptedData;
+
+        // Decrypt using the keys in reverse order
+        for (int i = keys.size() - 1; i >= 0; i--) {
+            SecretKeySpec keySpec = new SecretKeySpec(keys.get(i), "Camellia");
+            IvParameterSpec ivSpec = new IvParameterSpec(new byte[16]);
+
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+            decryptedData = cipher.doFinal(decryptedData);
+        }
+
+        return decryptedData;
     }
 
-    private byte[] decryptWithKuznyechik(byte[] data, byte[] password) throws Exception {
-        Security.addProvider(new BouncyCastleProvider());
-        Cipher cipher = Cipher.getInstance("GOST3412-2015", "BC");
-        SecretKeySpec keySpec = new SecretKeySpec(password, "GOST3412-2015");
-        cipher.init(Cipher.DECRYPT_MODE, keySpec);
-        return cipher.doFinal(data);
+    public byte[] decryptWithKuznyechik(byte[] encryptedData, List<byte[]> keys) throws Exception {
+        Cipher cipher = Cipher.getInstance("GOST3412-2015/CBC/PKCS7Padding");
+        byte[] decryptedData = encryptedData;
+
+        // Decrypt using the keys in reverse order
+        for (int i = keys.size() - 1; i >= 0; i--) {
+            SecretKeySpec keySpec = new SecretKeySpec(keys.get(i), "GOST3412-2015");
+            IvParameterSpec ivSpec = new IvParameterSpec(new byte[16]);
+
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+            decryptedData = cipher.doFinal(decryptedData); 
+        }
+
+        return decryptedData;
     }
 
     public static void main(String[] args) {

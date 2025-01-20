@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.stream.Collectors;
 import java.security.SecureRandom;
 import java.security.Security;
+import java.security.Key;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.*;          
@@ -26,9 +27,15 @@ import oshi.SystemInfo;
 import oshi.hardware.HWDiskStore;
 import java.time.*;
 import java.time.format.*; 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import java.time.temporal.ChronoUnit;
+import javax.crypto.spec.IvParameterSpec;
 
 public class CreateAccount {
+	
+	static {
+        Security.addProvider(new BouncyCastleProvider());
+    }
 	
 	//Variables for Account Creation
     private boolean strictMode = false;
@@ -39,7 +46,7 @@ public class CreateAccount {
     }
     
     public String username = "";
-    public String hashedCommunicationKey = "";
+    public String hashedCommunicationKey = null;
     
     //Get image
     public URL fileButtonIconURL = getClass().getResource("/images/File.png");
@@ -83,18 +90,6 @@ public class CreateAccount {
         summaryLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         panel.add(summaryLabel);
 
-        // Add the list (COMMENTED FOR PROGRAM TO WORK <REQUIRES LIST OF ENCRYPTION METHODS WHICH I DON'T HAVE>)
-        /*DefaultListModel<String> listModel = new DefaultListModel<>();
-        for (int i = 0; i < selected.size(); i++) {
-            String item = selected.get(i);
-            listModel.addElement((i + 1) + " " + item);
-        }
-
-        JList<String> list = new JList<>(listModel);
-        list.setFont(new Font("Arial", Font.PLAIN, 14));
-        list.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panel.add(list);
-		*/
         // Add another gap
         panel.add(Box.createRigidArea(new Dimension(0, 20)));
 
@@ -317,7 +312,6 @@ public void createPassword(JFrame frame) {
             for (int i = 0; i < orderListModel.size(); i++) {
                 encryptionOrder.add(orderListModel.getElementAt(i));
             }
-
             try {
                 // Format the content to include username and the hashed communication key
                 String content = username + ":" + description + ":" + communicationKey;
@@ -327,10 +321,19 @@ public void createPassword(JFrame frame) {
                 try (FileWriter writer = new FileWriter(keyFile)) {
                     writer.write(content);
                 }
-
+                List<byte[]> keys = new ArrayList<>();
                 // Encrypt the file using the password hash (byte array)
-                byte[] encryptedData = encryptFileWithOrder(keyFile, passwordHash, encryptionOrder);
+                if (hashedSerials != null) {
+                    String serials = String.join(",", hashedSerials); // Combine serials into a single string
+                    keys.add(hash.hashSHA256(serials));              // Hash the serials and add to the list
+                }
 
+                // Add passwordHash to the list of keys
+                keys.add(passwordHash);
+
+                // Encrypt the file content with the keys and the specified encryption order
+                byte[] encryptedData = encryptFileWithOrder(keyFile, keys, encryptionOrder);
+                
                 // Save the encrypted file
                 File encryptedFile = new File(System.getProperty("user.home") + File.separator + "communication_key_encrypted.txt");
                 try (FileOutputStream fos = new FileOutputStream(encryptedFile)) {
@@ -366,79 +369,117 @@ private String generateRandomKey() {
  String key = Base64.getEncoder().encodeToString(keyBytes); // UTF-8 compatible string
  return hash.hashSHA512(key); // Hash the key using SHA-512
 }
-private byte[] encryptFileWithOrder(File file, byte[] password, ArrayList<String> encryptionOrder) throws Exception {
-    // Read the file's content
+private byte[] encryptFileWithOrder(File file, List<byte[]> keys, ArrayList<String> encryptionOrder) throws Exception {
     byte[] fileContent = Files.readAllBytes(file.toPath());
-
-    // Apply encryption for each algorithm in the order
     byte[] encryptedData = fileContent;
+
     for (String algorithm : encryptionOrder) {
         switch (algorithm) {
             case "AES":
-                encryptedData = encryptWithAES(encryptedData, password);
+                encryptedData = encryptWithAES(encryptedData, keys);
                 break;
             case "Serpent":
-                encryptedData = encryptWithSerpent(encryptedData, password);
+                encryptedData = encryptWithSerpent(encryptedData, keys);
                 break;
             case "Twofish":
-                encryptedData = encryptWithTwofish(encryptedData, password);
+                encryptedData = encryptWithTwofish(encryptedData, keys);
                 break;
             case "Camellia":
-                encryptedData = encryptWithCamellia(encryptedData, password);
+                encryptedData = encryptWithCamellia(encryptedData, keys);
                 break;
             case "Kuznyechik":
-                encryptedData = encryptWithKuznyechik(encryptedData, password);
+                encryptedData = encryptWithKuznyechik(encryptedData, keys);
                 break;
             default:
                 throw new IllegalArgumentException("Unknown encryption algorithm: " + algorithm);
         }
     }
+    return encryptedData;
+}
+
+public byte[] encryptWithAES(byte[] deviceID, List<byte[]> keys) throws Exception {
+    Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+    byte[] encryptedData = deviceID;
+
+    // Encrypt using the keys in reverse order
+    for (int i = keys.size() - 1; i >= 0; i--) {
+        SecretKeySpec keySpec = new SecretKeySpec(keys.get(i), "AES");
+        IvParameterSpec ivSpec = new IvParameterSpec(new byte[16]); // Use a zero IV for simplicity
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+        encryptedData = cipher.doFinal(encryptedData);  // Encrypt the data using the current key
+    }
 
     return encryptedData;
 }
 
-// AES Encryption
-private byte[] encryptWithAES(byte[] data, byte[] password) throws Exception {
-    SecretKeySpec keySpec = new SecretKeySpec(password, "AES");
-    Cipher cipher = Cipher.getInstance("AES");
-    cipher.init(Cipher.ENCRYPT_MODE, keySpec);
-    return cipher.doFinal(data);
+// Serpent Encryption with Multiple Keys and PKCS7Padding
+//.addProvider(new BouncyCastleProvider());
+public byte[] encryptWithSerpent(byte[] deviceID, List<byte[]> keys) throws Exception {
+    Cipher cipher = Cipher.getInstance("Serpent/CBC/PKCS7Padding");
+    byte[] encryptedData = deviceID;
+
+    // Encrypt using the keys in reverse order
+    for (int i = keys.size() - 1; i >= 0; i--) {
+        SecretKeySpec keySpec = new SecretKeySpec(keys.get(i), "Serpent");
+        IvParameterSpec ivSpec = new IvParameterSpec(new byte[16]); // Use a zero IV for simplicity
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+        encryptedData = cipher.doFinal(encryptedData);  // Encrypt the data using the current key
+    }
+
+    return encryptedData;
 }
 
-// Serpent Encryption (Example with BouncyCastle)
-private byte[] encryptWithSerpent(byte[] data, byte[] password) throws Exception {
-    Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
-    Cipher cipher = Cipher.getInstance("Serpent", "BC");
-    SecretKeySpec keySpec = new SecretKeySpec(password, "Serpent");
-    cipher.init(Cipher.ENCRYPT_MODE, keySpec);
-    return cipher.doFinal(data);
+// Twofish Encryption with Multiple Keys and PKCS7Padding
+public byte[] encryptWithTwofish(byte[] deviceID, List<byte[]> keys) throws Exception {
+    Cipher cipher = Cipher.getInstance("Twofish/CBC/PKCS7Padding");
+    byte[] encryptedData = deviceID;
+
+    // Encrypt using the keys in reverse order
+    for (int i = keys.size() - 1; i >= 0; i--) {
+        SecretKeySpec keySpec = new SecretKeySpec(keys.get(i), "Twofish");
+        IvParameterSpec ivSpec = new IvParameterSpec(new byte[16]); // Use a zero IV for simplicity
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+        encryptedData = cipher.doFinal(encryptedData);  // Encrypt the data using the current key
+    }
+
+    return encryptedData;
 }
 
-// Twofish Encryption (Example with BouncyCastle)
-private byte[] encryptWithTwofish(byte[] data, byte[] password) throws Exception {
-    Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
-    Cipher cipher = Cipher.getInstance("Twofish", "BC");
-    SecretKeySpec keySpec = new SecretKeySpec(password, "Twofish");
-    cipher.init(Cipher.ENCRYPT_MODE, keySpec);
-    return cipher.doFinal(data);
+// Camellia Encryption with Multiple Keys and PKCS7Padding
+public byte[] encryptWithCamellia(byte[] deviceID, List<byte[]> keys) throws Exception {
+    Cipher cipher = Cipher.getInstance("Camellia/CBC/PKCS7Padding");
+    byte[] encryptedData = deviceID;
+
+    // Encrypt using the keys in reverse order
+    for (int i = keys.size() - 1; i >= 0; i--) {
+        SecretKeySpec keySpec = new SecretKeySpec(keys.get(i), "Camellia");
+        IvParameterSpec ivSpec = new IvParameterSpec(new byte[16]); // Use a zero IV for simplicity
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+        encryptedData = cipher.doFinal(encryptedData);  // Encrypt the data using the current key
+    }
+
+    return encryptedData;
 }
 
-// Camellia Encryption (Example with BouncyCastle)
-private byte[] encryptWithCamellia(byte[] data, byte[] password) throws Exception {
-    Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
-    Cipher cipher = Cipher.getInstance("Camellia", "BC");
-    SecretKeySpec keySpec = new SecretKeySpec(password, "Camellia");
-    cipher.init(Cipher.ENCRYPT_MODE, keySpec);
-    return cipher.doFinal(data);
-}
+// Kuznyechik (GOST) Encryption with Multiple Keys and PKCS7Padding
+public byte[] encryptWithKuznyechik(byte[] deviceID, List<byte[]> keys) throws Exception {
+    Cipher cipher = Cipher.getInstance("GOST3412-2015/CBC/PKCS7Padding");
+    byte[] encryptedData = deviceID;
 
-// Kuznyechik Encryption (Example with BouncyCastle)
-private byte[] encryptWithKuznyechik(byte[] data, byte[] password) throws Exception {
-    Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
-    Cipher cipher = Cipher.getInstance("GOST3412-2015", "BC");
-    SecretKeySpec keySpec = new SecretKeySpec(password, "GOST3412-2015");
-    cipher.init(Cipher.ENCRYPT_MODE, keySpec);
-    return cipher.doFinal(data);
+    // Encrypt using the keys in reverse order
+    for (int i = keys.size() - 1; i >= 0; i--) {
+        SecretKeySpec keySpec = new SecretKeySpec(keys.get(i), "GOST3412-2015");
+        IvParameterSpec ivSpec = new IvParameterSpec(new byte[16]); // Use a zero IV for simplicity
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+        encryptedData = cipher.doFinal(encryptedData);  // Encrypt the data using the current key
+    }
+
+    return encryptedData;
 }
 
 private void updateDeviceList(JPanel createAccountPanel) {
@@ -1192,6 +1233,31 @@ frame.repaint();
 	    return devices;
 	}
     
+
+    // Fetch storage device names using OSHI
+    public List<String> getStorageDeviceNames() {
+        List<String> deviceNames = new ArrayList<>();
+        SystemInfo systemInfo = new SystemInfo();
+        oshi.hardware.HardwareAbstractionLayer hardware = systemInfo.getHardware();
+        List<HWDiskStore> diskStores = hardware.getDiskStores();
+
+        // Iterate through each disk and add its name to the list, filtering out logical volumes
+        for (HWDiskStore disk : diskStores) {
+            String diskName = disk.getModel();  // Get the model of the disk (e.g., "Samsung 970 Evo")
+            
+            // Filter out logical volumes or devices with names that suggest they are not physical
+            if (!isLogicalVolume(diskName)) {
+                deviceNames.add(diskName);
+            }
+        }
+
+        if (deviceNames.isEmpty()) {
+            deviceNames.add("No devices found.");
+        }
+
+        return deviceNames;
+    }
+	
     public void createAccount(JFrame frame) {
         SwingUtilities.invokeLater(() -> {
             frame.setTitle("AmnesicChat - Create Account");
@@ -1340,30 +1406,6 @@ frame.repaint();
             frame.revalidate();
             frame.repaint();
         });
-    }
-
-    // Fetch storage device names using OSHI
-    private List<String> getStorageDeviceNames() {
-        List<String> deviceNames = new ArrayList<>();
-        SystemInfo systemInfo = new SystemInfo();
-        oshi.hardware.HardwareAbstractionLayer hardware = systemInfo.getHardware();
-        List<HWDiskStore> diskStores = hardware.getDiskStores();
-
-        // Iterate through each disk and add its name to the list, filtering out logical volumes
-        for (HWDiskStore disk : diskStores) {
-            String diskName = disk.getModel();  // Get the model of the disk (e.g., "Samsung 970 Evo")
-            
-            // Filter out logical volumes or devices with names that suggest they are not physical
-            if (!isLogicalVolume(diskName)) {
-                deviceNames.add(diskName);
-            }
-        }
-
-        if (deviceNames.isEmpty()) {
-            deviceNames.add("No devices found.");
-        }
-
-        return deviceNames;
     }
 
     // Function to check if the device name suggests it is a logical volume
