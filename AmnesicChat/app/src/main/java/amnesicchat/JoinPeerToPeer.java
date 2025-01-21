@@ -12,8 +12,14 @@ public class JoinPeerToPeer {
     private ServerSocket serverSocket;
     private Socket clientSocket;
 
-    public void peerToPeerUI(JFrame frame, boolean inP2P) {
+    static ChatSession chatSession = CentralManager.getChatSession();
+    static App app = CentralManager.getApp();
+    
+    public String user;
+    
+    public void peerToPeerUI(JFrame frame, boolean inP2P, String username) {
         // Clear frame
+    	user = username;
         frame.getContentPane().removeAll();
 
         if (inP2P) {
@@ -25,10 +31,18 @@ public class JoinPeerToPeer {
 
     private void setupP2PUI(JFrame frame) {
         // Code for inP2P == true
+        JPanel panel = new JPanel(new BorderLayout());
+        
         JLabel message = new JLabel("Connected to Peer!", JLabel.CENTER);
         message.setFont(new Font("Arial", Font.BOLD, 18));
-        frame.add(message, BorderLayout.CENTER);
+        panel.add(message, BorderLayout.CENTER);
 
+        // Add Back button
+        JButton backButton = new JButton("Back");
+        backButton.addActionListener(e -> app.loggedInMenu(frame, null, null)); // Navigate back to menu
+        panel.add(backButton, BorderLayout.SOUTH);
+
+        frame.add(panel, BorderLayout.CENTER);
         frame.revalidate();
         frame.repaint();
     }
@@ -99,8 +113,7 @@ public class JoinPeerToPeer {
                 try {
                     int port = Integer.parseInt(portStr);
                     connectToPeer(ip, port);
-                    JOptionPane.showMessageDialog(frame, "Connected to " + ip + ":" + port, "Success", JOptionPane.INFORMATION_MESSAGE);
-                    peerToPeerUI(frame, true);
+                    chatSession.createChatRoomUI(frame, clientSocket, user);
                 } catch (NumberFormatException ex) {
                     JOptionPane.showMessageDialog(frame, "Invalid port number.", "Error", JOptionPane.ERROR_MESSAGE);
                 } catch (IOException ex) {
@@ -108,6 +121,14 @@ public class JoinPeerToPeer {
                 }
             }
         });
+
+        // Add Back button
+        JButton backButton = new JButton("Back");
+        backButton.addActionListener(e -> app.loggedInMenu(frame, null, null)); // Navigate back to menu
+        gbc.gridx = 0;
+        gbc.gridy = 4;
+        gbc.gridwidth = 2;
+        mainPanel.add(backButton, gbc);
 
         // Add main panel to the frame
         frame.add(mainPanel, BorderLayout.CENTER);

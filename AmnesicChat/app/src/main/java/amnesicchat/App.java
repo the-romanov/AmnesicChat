@@ -23,6 +23,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import java.io.IOException;
 import javax.crypto.spec.IvParameterSpec;
 import java.net.ServerSocket;
+import java.net.SocketException;
 import java.net.Socket;
 
 public class App {
@@ -53,6 +54,8 @@ public class App {
     public JPanel appPanel = new JPanel(); // Stops creating new panels unnecessarily.
     public int baseWidth = 650;
     public int baseHeight = 350;	
+    public boolean isPortForward = false;
+    public String username;
     
     public App() {
         frame = new JFrame("AmnesicChat"); // Constructor for frame
@@ -83,6 +86,9 @@ public class App {
     // Access Settings
     static Settings settings = CentralManager.getSettings();
     
+    //Access Chat
+    static ChatSession chatSession = CentralManager.getChatSession();
+    
     // Variables for account creation
     public boolean strictMode = false; // Enforce strict account protection
     public List<String> hashedSerials = new ArrayList<>(); //Device ID encryption key
@@ -93,7 +99,9 @@ public class App {
     public void loggedInMenu(JFrame frame, String username, String publicFingerprint) {
         // Clear frame
         frame.getContentPane().removeAll();
+        frame.setTitle("AmnesicChat");
 
+        this.username = username;
         // Set frame size
         frame.setSize(800, 750);
 
@@ -156,7 +164,7 @@ public class App {
         panel.add(copyFingerprintButton);
 
         // Add main buttons
-        String[] buttonLabels = {"JOIN A SERVER", "PEER TO PEER", "HOST A SERVER", "CHANGE ACCOUNT", "SETTINGS", "QUIT"};
+        String[] buttonLabels = {"JOIN A SERVER", "PEER TO PEER", "HOST A SERVER", "SETTINGS", "QUIT"};
         int buttonSpacing = 40;
         int initialYPosition = 300;
 
@@ -173,10 +181,7 @@ public class App {
                     button.addActionListener(e -> joinServer.createJoinServerUI(frame));
                     break;
                 case "PEER TO PEER":
-                    button.addActionListener(e -> peerToPeer.peerToPeerUI(frame, false));
-                    break;
-                case "CHANGE ACCOUNT":
-                    button.addActionListener(e -> mainMenu(frame));
+                    button.addActionListener(e -> peerToPeer.peerToPeerUI(frame, false, username));
                     break;
                 case "HOST A SERVER":
                     button.addActionListener(e -> {
@@ -206,38 +211,61 @@ public class App {
 
     
     private void startPingListener(JFrame frame) {
-        try {
-            serverSocket = new ServerSocket(10555);
-            pingListenerThread = new Thread(() -> {
-                while (!serverSocket.isClosed()) {
-                    try {
-                        Socket clientSocket = serverSocket.accept(); // Wait for a connection
-                        SwingUtilities.invokeLater(() -> {
-                            JOptionPane.showMessageDialog(frame, "Ping Received!", "Ping", JOptionPane.INFORMATION_MESSAGE);
-                        });
-                        clientSocket.close();
-                    } catch (IOException e) {
-                        if (!serverSocket.isClosed()) {
-                            e.printStackTrace();
+        if (!isPortForward) { // Check if the port is already open
+            try {
+                serverSocket = new ServerSocket(10555); // Open the port
+                isPortForward = true; // Set the flag to true once the port is opened
+
+                pingListenerThread = new Thread(() -> {
+                    System.out.println("Ping listener started on port 10555.");
+                    while (!Thread.currentThread().isInterrupted()) {
+                        try {
+                            Socket clientSocket = serverSocket.accept(); // Wait for a connection
+                            SwingUtilities.invokeLater(() -> {
+                                chatSession.createChatRoomUI(frame, clientSocket, username);
+                            });
+                        } catch (SocketException e) {
+                            // Expected when the socket is closed
+                            if (!serverSocket.isClosed()) {
+                                e.printStackTrace();
+                            }
+                            System.out.println("Ping listener socket closed.");
+                            break; // Exit the loop
+                        } catch (IOException e) {
+                            if (!serverSocket.isClosed()) {
+                                e.printStackTrace();
+                            }
                         }
                     }
-                }
-            });
-            pingListenerThread.start();
-        } catch (IOException e) {
-            JOptionPane.showMessageDialog(frame, "Failed to open port 10555: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    System.out.println("Ping listener thread exiting.");
+                });
+
+                pingListenerThread.start();
+            } catch (IOException e) {
+                isPortForward = false; // Reset the flag if the port fails to open
+                JOptionPane.showMessageDialog(frame, "Failed to open port 10555: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        } else {
+            System.out.println("Port 10555 is already open.");
         }
     }
 
     public void stopPingListener() {
         try {
+            // Close the server socket
             if (serverSocket != null && !serverSocket.isClosed()) {
                 serverSocket.close();
+                System.out.println("Port Closed - 1");
+
             }
+
+            // Interrupt the listener thread
             if (pingListenerThread != null && pingListenerThread.isAlive()) {
                 pingListenerThread.interrupt();
+                System.out.println("Port Closed - 2");
             }
         } catch (IOException e) {
+        	System.out.println("Port Open - 3");
             e.printStackTrace();
         }
     }
@@ -393,7 +421,7 @@ public class App {
                 String[] parts = text.split(":");
 
                 if (parts.length >= 3) {
-                    String username = parts[0];
+                    username = parts[0];
                     String communicationKey = parts[2];
                     String pubKey = hash.hashSHA512(hash.hashSHA512(communicationKey));
 
@@ -601,7 +629,7 @@ public class App {
                     String decryptedText = new String(decryptedData, StandardCharsets.UTF_8);
                     String[] parts = decryptedText.split(":");
                     if (parts.length >= 3) {
-                        String username = parts[0];
+                        username = parts[0];
                         String communicationKey = parts[2];
                         String pubKey = hash.hashSHA512(hash.hashSHA512(communicationKey));
 

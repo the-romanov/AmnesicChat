@@ -1,11 +1,15 @@
-import javax.swing.*; 
-import java.awt.*; 
-import java.awt.event.*;
-import java.io.*; 
+import javax.swing.*;
+import java.awt.*;
+import java.io.*;
+import java.net.Socket;
 
 public class ChatSession {
-	public void createChatRoomUI(JFrame frame) {
-        // Clear frame
+
+    static App app = CentralManager.getApp();
+	
+    public void createChatRoomUI(JFrame frame, Socket clientSocket, String username) {
+        System.out.println(app.username);
+
         frame.getContentPane().removeAll();
         frame.setSize(1000, 600);
         frame.setLayout(new BorderLayout());
@@ -16,35 +20,26 @@ public class ChatSession {
         usersPanel.setPreferredSize(new Dimension(200, 600));
         usersPanel.setBorder(BorderFactory.createTitledBorder("Users Online:"));
 
-        // Sample users
         String[] users = {"amnesic1122qs", "amnesic1ea5", "amnesic1vw42", "amnesic1aw35"};
         for (String user : users) {
             JPanel userPanel = new JPanel();
             userPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
             JLabel userLabel = new JLabel(user);
-            JLabel statusIcon = new JLabel(new ImageIcon("status_icon.png")); // Replace
+            JLabel statusIcon = new JLabel(new ImageIcon("status_icon.png"));
             userPanel.add(statusIcon);
             userPanel.add(userLabel);
             usersPanel.add(userPanel);
         }
 
-        // Middle panel for chat
         JPanel chatPanel = new JPanel();
         chatPanel.setLayout(new BorderLayout());
 
-        // Chat messages
         JTextArea chatArea = new JTextArea();
         chatArea.setEditable(false);
-        chatArea.setText("amnesic1122qs: [NO PGP KEY]\n" +
-                "amnesic1ea5: Oh cool!\n" +
-                "amnesic1ea5: [USER NO AUTH]\n" +
-                "amnesic1vw42: [NO DEVICE ID]\n" +
-                "amnesic1aw: Sounds like a plan!\n" +
-                "amnesic441: Alright, so when will we meet?");
+        chatArea.setLineWrap(true);
         JScrollPane chatScrollPane = new JScrollPane(chatArea);
         chatPanel.add(chatScrollPane, BorderLayout.CENTER);
 
-        // Text input area
         JPanel inputPanel = new JPanel();
         inputPanel.setLayout(new BorderLayout());
         JTextField inputField = new JTextField();
@@ -53,41 +48,86 @@ public class ChatSession {
         inputPanel.add(sendButton, BorderLayout.EAST);
         chatPanel.add(inputPanel, BorderLayout.SOUTH);
 
-        // Center image
-        JLabel imageLabel = new JLabel(new ImageIcon("image.png")); // Replace 
-        chatPanel.add(imageLabel, BorderLayout.NORTH);
-
-        // Right panel for options
-        JPanel optionsPanel = new JPanel();
-        optionsPanel.setLayout(new BoxLayout(optionsPanel, BoxLayout.Y_AXIS));
-        optionsPanel.setPreferredSize(new Dimension(200, 600));
-        optionsPanel.setBorder(BorderFactory.createTitledBorder("P2P / {CHAT ROOM NAME}"));
-
-        // Encryption methods
-        JLabel encryptionLabel = new JLabel("Encryption Methods for Sending Messages:");
-        optionsPanel.add(encryptionLabel);
-
-        String[] methods = {"AES", "Serpent", "Twofish", "Camellia", "Kuznyechik"};
-        for (String method : methods) {
-            JCheckBox checkBox = new JCheckBox(method);
-            optionsPanel.add(checkBox);
-        }
-
-        // Buttons
-        JButton openChatButton = new JButton("Open Another Chat Session");
-        JButton inviteButton = new JButton("Invite People");
-        JButton disconnectButton = new JButton("Disconnect");
-        optionsPanel.add(Box.createRigidArea(new Dimension(0, 20))); // Spacing
-        optionsPanel.add(openChatButton);
-        optionsPanel.add(inviteButton);
-        optionsPanel.add(disconnectButton);
-
-        // Add components to the frame
         frame.add(usersPanel, BorderLayout.WEST);
         frame.add(chatPanel, BorderLayout.CENTER);
-        frame.add(optionsPanel, BorderLayout.EAST);
 
         frame.revalidate();
         frame.repaint();
+
+        sendButton.addActionListener(e -> {
+            String message = inputField.getText().trim();
+            if (!message.isEmpty()) {
+                try {
+                    PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+                    out.println(message);
+                    chatArea.append(username +": "+ message + "\n");
+                    inputField.setText("");
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(frame, "Failed to send message: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+
+        new Thread(() -> {
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                 PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
+
+                String receivedMessage;
+                while ((receivedMessage = in.readLine()) != null) {
+                    if ("###DISCONNECT###".equals(receivedMessage)) {
+                        SwingUtilities.invokeLater(() -> {
+                            JOptionPane.showMessageDialog(frame, "Chat Closed. User disconnected.", "Disconnected", JOptionPane.INFORMATION_MESSAGE);
+                            app.loggedInMenu(frame, null, null);
+                        });
+                        break;
+                    }
+
+                    String finalMessage = receivedMessage;
+                    SwingUtilities.invokeLater(() -> chatArea.append("Peer: " + finalMessage + "\n"));
+                }
+            } catch (IOException ex) {
+                System.out.println("Connection closed: " + ex.getMessage());
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(frame, "Chat Closed. User disconnected.", "Disconnected", JOptionPane.INFORMATION_MESSAGE);
+                    app.loggedInMenu(frame, null, null);
+                });
+            }
+        }).start();
+
+        frame.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+                try {
+                    PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+
+                    out.println("###DISCONNECT###");
+                    out.println("###DISCONNECT###");
+
+                    clientSocket.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    System.exit(0);
+                }
+            }
+        });
+
+        // Add a shutdown hook for Ctrl+C or program termination
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (clientSocket != null && !clientSocket.isClosed()) {
+                try {
+                    PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+
+                    out.println("###DISCONNECT###");
+                    out.println("###DISCONNECT###");
+
+                    clientSocket.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }));
     }
+
 }

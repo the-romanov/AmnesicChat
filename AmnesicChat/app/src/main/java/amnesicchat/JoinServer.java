@@ -3,6 +3,9 @@ import java.awt.*;
 import java.awt.event.*; 
 
 public class JoinServer {
+	
+    static App app = CentralManager.getApp();
+	
 	public void connectionUI(JFrame frame) {
 		
 	    App app = CentralManager.getApp();
@@ -90,78 +93,87 @@ public class JoinServer {
 	    });
 	}
 	
-    public void createJoinServerUI(JFrame frame) {
-        // Clear frame
-        frame.getContentPane().removeAll();
-        frame.setSize(600, 400);
-        frame.setLayout(null); // Use null layout for custom positioning
+	public void createJoinServerUI(JFrame frame) {
+	    // Clear frame
+	    frame.getContentPane().removeAll();
+	    frame.setSize(600, 400);
+	    frame.setLayout(null); // Use null layout for custom positioning
 
-        // Title Label
-        JLabel titleLabel = new JLabel("Join A Server:");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
-        titleLabel.setBounds(220, 20, 200, 30);
-        frame.add(titleLabel);
+	    // Title Label
+	    JLabel titleLabel = new JLabel("Join A Server:");
+	    titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
+	    titleLabel.setBounds(220, 20, 200, 30);
+	    frame.add(titleLabel);
 
-        // IP/Domain Label and TextField
-        JLabel ipLabel = new JLabel("IP/Domain:");
-        ipLabel.setFont(new Font("Arial", Font.PLAIN, 14));
-        ipLabel.setBounds(50, 80, 100, 20);
-        frame.add(ipLabel);
+	    // IP/Domain Label and TextField
+	    JLabel ipLabel = new JLabel("IP/Domain:");
+	    ipLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+	    ipLabel.setBounds(50, 80, 100, 20);
+	    frame.add(ipLabel);
 
-        JTextField ipField = new JTextField();
-        ipField.setBounds(150, 80, 350, 25);
-        frame.add(ipField);
+	    JTextField ipField = new JTextField();
+	    ipField.setBounds(150, 80, 350, 25);
+	    frame.add(ipField);
 
-        // Server Types Label and Buttons
-        JLabel serverTypeLabel = new JLabel("Server Types:");
-        serverTypeLabel.setFont(new Font("Arial", Font.PLAIN, 14));
-        serverTypeLabel.setBounds(50, 130, 100, 20);
-        frame.add(serverTypeLabel);
+	    // Server Types Label and Buttons
+	    JLabel serverTypeLabel = new JLabel("Server Types:");
+	    serverTypeLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+	    serverTypeLabel.setBounds(50, 130, 100, 20);
+	    frame.add(serverTypeLabel);
 
-        JToggleButton directoryButton = new JToggleButton("DIRECTORY");
-        directoryButton.setBounds(150, 130, 110, 30);
-        frame.add(directoryButton);
+	    JToggleButton directoryButton = new JToggleButton("DIRECTORY");
+	    directoryButton.setBounds(150, 130, 110, 30);
+	    frame.add(directoryButton);
 
-        JToggleButton chatButton = new JToggleButton("CHAT");
-        chatButton.setBounds(270, 130, 110, 30);
-        frame.add(chatButton);
+	    JToggleButton chatButton = new JToggleButton("CHAT");
+	    chatButton.setBounds(270, 130, 110, 30);
+	    frame.add(chatButton);
 
-        JToggleButton pingButton = new JToggleButton("PING");
-        pingButton.setBounds(390, 130, 110, 30);
-        frame.add(pingButton);
+	    JToggleButton pingButton = new JToggleButton("PING");
+	    pingButton.setBounds(390, 130, 110, 30);
+	    frame.add(pingButton);
 
-        // Server Password Label and TextField
-        JLabel passwordLabel = new JLabel("Server Password:");
-        passwordLabel.setFont(new Font("Arial", Font.PLAIN, 14));
-        passwordLabel.setBounds(50, 180, 150, 20);
-        frame.add(passwordLabel);
+	    // Server Password Label and TextField
+	    JLabel passwordLabel = new JLabel("Server Password:");
+	    passwordLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+	    passwordLabel.setBounds(50, 180, 150, 20);
+	    frame.add(passwordLabel);
 
-        JTextField passwordField = new JTextField();
-        passwordField.setBounds(200, 180, 300, 25);
-        frame.add(passwordField);
+	    JTextField passwordField = new JTextField();
+	    passwordField.setBounds(200, 180, 300, 25);
+	    frame.add(passwordField);
 
-        // Info Icon and Tooltip
-        JLabel infoLabel = new JLabel(new ImageIcon("info_icon.png")); // Replace with the path to your info icon
-        infoLabel.setBounds(50, 230, 20, 20);
-        frame.add(infoLabel);
+	    // Info Icon and Tooltip
+	    JLabel infoLabel = new JLabel(new ImageIcon("info_icon.png")); // Replace with the path to your info icon
+	    infoLabel.setBounds(50, 230, 20, 20);
+	    frame.add(infoLabel);
 
-        JLabel tooltipLabel = new JLabel("<html>Allows you to connect to different servers that may just have<br>" +
-                "only one type of server running only. Example: One address<br>" +
-                "can be a ping server, the other can be a chat server.</html>");
-        tooltipLabel.setFont(new Font("Arial", Font.ITALIC, 12));
-        tooltipLabel.setBounds(80, 230, 400, 50);
-        frame.add(tooltipLabel);
+	    JLabel tooltipLabel = new JLabel("<html>Allows you to connect to different servers that may just have<br>" +
+	            "only one type of server running only. Example: One address<br>" +
+	            "can be a ping server, the other can be a chat server.</html>");
+	    tooltipLabel.setFont(new Font("Arial", Font.ITALIC, 12));
+	    tooltipLabel.setBounds(80, 230, 400, 50);
+	    frame.add(tooltipLabel);
 
-        // Buttons for Open Connection and Connect
-        JButton openConnectionButton = new JButton("OPEN ANOTHER CONNECTION");
-        openConnectionButton.setBounds(50, 300, 220, 30);
-        frame.add(openConnectionButton);
+	    // Buttons for Open Connection and Connect
+	    JButton openConnectionButton = new JButton("OPEN ANOTHER CONNECTION");
+	    openConnectionButton.setBounds(50, 300, 220, 30);
+	    frame.add(openConnectionButton);
 
-        JButton connectButton = new JButton("CONNECT");
-        connectButton.setBounds(300, 300, 150, 30);
-        frame.add(connectButton);
+	    JButton connectButton = new JButton("CONNECT");
+	    connectButton.setBounds(300, 300, 150, 30);
+	    frame.add(connectButton);
 
-        frame.revalidate();
-        frame.repaint();
-    }
+	    // Back Button
+	    JButton backButton = new JButton("BACK");
+	    backButton.setBounds(470, 300, 80, 30); // Position to the right of the "Connect" button
+	    frame.add(backButton);
+
+	    // Action listener for Back button
+	    backButton.addActionListener(e -> app.loggedInMenu(frame, null, null));
+
+	    frame.revalidate();
+	    frame.repaint();
+	}
+
 }
