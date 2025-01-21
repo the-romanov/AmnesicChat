@@ -22,6 +22,8 @@ import java.security.Security;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import java.io.IOException;
 import javax.crypto.spec.IvParameterSpec;
+import java.net.ServerSocket;
+import java.net.Socket;
 
 public class App {
 	
@@ -66,6 +68,9 @@ public class App {
     // Access the Hash instance
     static Hash hash = CentralManager.getHash();
     
+    //Access the Host Server instance
+    static HostServer hostServer = CentralManager.getHostServer();
+    
     // Access the CreateAccount instance
     static CreateAccount createAccount = CentralManager.getCreateAccount();
     
@@ -81,6 +86,9 @@ public class App {
     // Variables for account creation
     public boolean strictMode = false; // Enforce strict account protection
     public List<String> hashedSerials = new ArrayList<>(); //Device ID encryption key
+
+    private ServerSocket serverSocket;
+    private Thread pingListenerThread;
 
     public void loggedInMenu(JFrame frame, String username, String publicFingerprint) {
         // Clear frame
@@ -165,22 +173,21 @@ public class App {
                     button.addActionListener(e -> joinServer.createJoinServerUI(frame));
                     break;
                 case "PEER TO PEER":
-                    button.addActionListener(e -> peerToPeer.peerToPeerUI(frame));
+                    button.addActionListener(e -> peerToPeer.peerToPeerUI(frame, false));
                     break;
                 case "CHANGE ACCOUNT":
                     button.addActionListener(e -> mainMenu(frame));
                     break;
                 case "HOST A SERVER":
                     button.addActionListener(e -> {
-                        CreateServer createServer = new CreateServer();
-                        createServer.createServer1(frame);
+                        hostServer.hostServer(frame);
                     });
                     break;
                 case "SETTINGS":
-                	button.addActionListener(e -> {
+                    button.addActionListener(e -> {
                         settings.settingsUI();
-                	});
-                	break;
+                    });
+                    break;
             }
 
             panel.add(button);
@@ -192,6 +199,47 @@ public class App {
 
         frame.revalidate();
         frame.repaint();
+
+        // Start listening on port 10555
+        startPingListener(frame);
+    }
+
+    
+    private void startPingListener(JFrame frame) {
+        try {
+            serverSocket = new ServerSocket(10555);
+            pingListenerThread = new Thread(() -> {
+                while (!serverSocket.isClosed()) {
+                    try {
+                        Socket clientSocket = serverSocket.accept(); // Wait for a connection
+                        SwingUtilities.invokeLater(() -> {
+                            JOptionPane.showMessageDialog(frame, "Ping Received!", "Ping", JOptionPane.INFORMATION_MESSAGE);
+                        });
+                        clientSocket.close();
+                    } catch (IOException e) {
+                        if (!serverSocket.isClosed()) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            });
+            pingListenerThread.start();
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(frame, "Failed to open port 10555: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    public void stopPingListener() {
+        try {
+            if (serverSocket != null && !serverSocket.isClosed()) {
+                serverSocket.close();
+            }
+            if (pingListenerThread != null && pingListenerThread.isAlive()) {
+                pingListenerThread.interrupt();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
     
     public void mainMenu(JFrame frame) {

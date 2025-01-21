@@ -6,6 +6,7 @@ public class CentralManager {
     private static CreateServer createServer = new CreateServer();
     private static DirectoryServer directoryServer = new DirectoryServer();
     private static final Hash hash = new Hash();
+    private static HostServer hostServer = new HostServer();
     private static JoinPeerToPeer joinPeerToPeer = new JoinPeerToPeer();
     private static JoinServer joinServer = new JoinServer();
     private static Settings settings = new Settings();
@@ -23,6 +24,7 @@ public class CentralManager {
             return new Hash(); // Stops program crashing
         }
     }
+    public static HostServer getHostServer() {return hostServer;}
     public static JoinPeerToPeer getJoinPeerToPeer() {return joinPeerToPeer;}
     public static JoinServer getJoinServer() {return joinServer;}
     public static Settings getSettings() {return settings;}

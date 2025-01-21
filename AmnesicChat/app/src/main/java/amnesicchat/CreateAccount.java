@@ -898,7 +898,7 @@ public void createGPGIdentity(JFrame frame) {
         // Continue button
         JButton continueButton = new JButton("Continue");
         continueButton.addActionListener(e -> {
-            boolean doVerify = true;
+            boolean doVerify = false;
 
             if (doVerify) {
                 warningPanel.removeAll(); // Clear previous warnings

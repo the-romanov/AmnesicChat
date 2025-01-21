@@ -1,92 +1,158 @@
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
 
 public class JoinPeerToPeer {
-	public void peerToPeerUI(JFrame frame) {
-    	// Clear frame
+
+    private ServerSocket serverSocket;
+    private Socket clientSocket;
+
+    public void peerToPeerUI(JFrame frame, boolean inP2P) {
+        // Clear frame
         frame.getContentPane().removeAll();
-        
+
+        if (inP2P) {
+            setupP2PUI(frame);
+        } else {
+            setupConnectionUI(frame);
+        }
+    }
+
+    private void setupP2PUI(JFrame frame) {
+        // Code for inP2P == true
+        JLabel message = new JLabel("Connected to Peer!", JLabel.CENTER);
+        message.setFont(new Font("Arial", Font.BOLD, 18));
+        frame.add(message, BorderLayout.CENTER);
+
+        frame.revalidate();
+        frame.repaint();
+    }
+
+    private void setupConnectionUI(JFrame frame) {
         // Set up the frame properties
-        frame.setTitle("Peer To Peer");
+        frame.setTitle("AmnesicChat - Connect to Peer");
         frame.setLayout(new BorderLayout());
-        frame.setSize(600, 400);
+        frame.setSize(400, 300);
 
-        // Panel for the title
-        JLabel titleLabel = new JLabel("PEER TO PEER", JLabel.CENTER);
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 20));
-        frame.add(titleLabel, BorderLayout.NORTH);
-
-        // Main panel for the user list
+        // Main panel
         JPanel mainPanel = new JPanel();
         mainPanel.setLayout(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5, 5, 5, 5);
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        // Sample user data 
-        String[][] users = {
-            {"vegas1255", "2q-8A_*4jojsa89u%*£;", "Authorised Friend", "Look at the stars and you will be blinded by light.", "white"},
-            {"mega223", "90sauMO4maosimfwa4", "GPG Mismatch", "Just chilling.", "yellow"},
-            {"vegas1255", "Akafs=K\"$-0sdpmfrasr", "Identity Flush", "123e", "red"},
-            {"abaaaaasus", "25)(*U\"A)Qj092q4j)980", "Partial Authorisation (You)", "Abacus is nice, you.", "purple"}
-        };
+        // Title
+        JLabel titleLabel = new JLabel("PEER TO PEER (NOT CONNECTED TO A PEER)", JLabel.CENTER);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.gridwidth = 2;
+        mainPanel.add(titleLabel, gbc);
 
-        // Add users to the panel
-        for (int i = 0; i < users.length; i++) {
-            String username = users[i][0];
-            String fingerprint = users[i][1];
-            String relation = users[i][2];
-            String note = users[i][3];
-            String color = users[i][4];
+        // IP Address/Domain field
+        JLabel ipLabel = new JLabel("IP Address/Domain:");
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.gridwidth = 1;
+        mainPanel.add(ipLabel, gbc);
 
-            JPanel userPanel = new JPanel(new BorderLayout());
-            userPanel.setBorder(BorderFactory.createLineBorder(Color.BLACK, 1));
+        JTextField ipField = new JTextField();
+        gbc.gridx = 1;
+        gbc.gridy = 1;
+        mainPanel.add(ipField, gbc);
 
-            // Set background color
-            switch (color.toLowerCase()) {
-                case "yellow": userPanel.setBackground(Color.YELLOW); break;
-                case "red": userPanel.setBackground(Color.RED); break;
-                case "purple": userPanel.setBackground(Color.MAGENTA); break;
-                default: userPanel.setBackground(Color.WHITE); break;
+        // Port field
+        JLabel portLabel = new JLabel("Peer To Peer Port:");
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        mainPanel.add(portLabel, gbc);
+
+        JTextField portField = new JTextField("50000"); // Suggested default port
+        gbc.gridx = 1;
+        gbc.gridy = 2;
+        mainPanel.add(portField, gbc);
+
+        // Attempt connection button
+        JButton connectButton = new JButton("Connect to Peer");
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        gbc.gridwidth = 2;
+        mainPanel.add(connectButton, gbc);
+
+        // Action listener for connection
+        connectButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String ip = ipField.getText().trim();
+                String portStr = portField.getText().trim();
+
+                if (ip.isEmpty() || portStr.isEmpty()) {
+                    JOptionPane.showMessageDialog(frame, "Please enter both IP address and port.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                try {
+                    int port = Integer.parseInt(portStr);
+                    connectToPeer(ip, port);
+                    JOptionPane.showMessageDialog(frame, "Connected to " + ip + ":" + port, "Success", JOptionPane.INFORMATION_MESSAGE);
+                    peerToPeerUI(frame, true);
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(frame, "Invalid port number.", "Error", JOptionPane.ERROR_MESSAGE);
+                } catch (IOException ex) {
+                    JOptionPane.showMessageDialog(frame, "Failed to connect: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
             }
+        });
 
-            // User info label
-            JLabel userInfo = new JLabel(
-                "<html><b>" + username + "</b><br>Fingerprint: " + fingerprint +
-                "<br>Relation: " + relation + "<br>" + note + "</html>");
-            userPanel.add(userInfo, BorderLayout.CENTER);
-
-            // Button panel
-            JPanel buttonPanel = new JPanel();
-            buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.Y_AXIS));
-
-            JButton startSessionButton = new JButton("Start P2P Session");
-            JButton authorizeButton = new JButton(relation.equals("Authorised Friend") ? "Reauthorise User" : "Authorise User");
-            buttonPanel.add(startSessionButton);
-            buttonPanel.add(authorizeButton);
-
-            userPanel.add(buttonPanel, BorderLayout.EAST);
-
-            // Add the user panel to the main panel
-            gbc.gridx = 0;
-            gbc.gridy = i;
-            gbc.weightx = 1.0;
-            gbc.gridwidth = 1;
-            mainPanel.add(userPanel, gbc);
-        }
-
-        // Add the main panel to the frame
-        JScrollPane scrollPane = new JScrollPane(mainPanel);
-        frame.add(scrollPane, BorderLayout.CENTER);
-
-        // Footer panel for navigation buttons
-        JPanel footerPanel = new JPanel(new FlowLayout());
-        JButton previousButton = new JButton("PREVIOUS");
-        JButton nextButton = new JButton("NEXT");
-        footerPanel.add(previousButton);
-        footerPanel.add(nextButton);
-        frame.add(footerPanel, BorderLayout.SOUTH);
+        // Add main panel to the frame
+        frame.add(mainPanel, BorderLayout.CENTER);
         frame.revalidate();
         frame.repaint();
+    }
+
+    private void connectToPeer(String ip, int port) throws IOException {
+        // Close any existing connection
+        if (clientSocket != null && !clientSocket.isClosed()) {
+            clientSocket.close();
+        }
+        // Establish a connection to the remote peer
+        clientSocket = new Socket(ip, port);
+
+        // Optionally, you can send a handshake message or confirmation
+        PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+        out.println("Hello from AmnesicChat!");
+
+        // Start listening for incoming messages
+        new Thread(() -> listenForMessages(clientSocket)).start();
+    }
+
+    private void listenForMessages(Socket socket) {
+        try {
+            // Handle incoming messages from the peer
+            var input = socket.getInputStream();
+            var buffer = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = input.read(buffer)) != -1) {
+                String message = new String(buffer, 0, bytesRead);
+                System.out.println("Received: " + message); // Debug: Log the received message
+            }
+        } catch (IOException e) {
+            System.out.println("Connection closed: " + e.getMessage());
+        }
+    }
+
+    // Optional: Stop listening on the port
+    public void closePort() throws IOException {
+        if (serverSocket != null && !serverSocket.isClosed()) {
+            serverSocket.close();
+        }
+        if (clientSocket != null && !clientSocket.isClosed()) {
+            clientSocket.close();
+        }
     }
 }
