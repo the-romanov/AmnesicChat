@@ -1,21 +1,30 @@
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Arrays;
 
 public class CreateServer {
-	public static void createServer3(JFrame frame) {
-        // Set the layout
+    static CreateAccount createAccount = CentralManager.getCreateAccount();
+    static CipherData cipherData = CentralManager.getCipherData();
+    static StorageDevices storageDevices = CentralManager.getStorageDevices();
+
+    public static void createServer3(JFrame frame) {
+        frame.getContentPane().removeAll();
         frame.setLayout(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(10, 10, 10, 10); // Add padding
+        gbc.insets = new Insets(10, 10, 10, 10);
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.gridx = 0;
-        gbc.gridy = 0;
 
         // Title Label
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.gridwidth = 2;
         JLabel titleLabel = new JLabel("Create A Server", SwingConstants.CENTER);
         titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
-        gbc.gridwidth = 2;
         frame.add(titleLabel, gbc);
 
         // Bot Protection
@@ -24,6 +33,7 @@ public class CreateServer {
         JLabel botProtectionLabel = new JLabel("Bot Protection:");
         frame.add(botProtectionLabel, gbc);
 
+        gbc.gridx = 1;
         JPanel botProtectionPanel = new JPanel(new FlowLayout());
         JRadioButton botYes = new JRadioButton("YES");
         JRadioButton botNo = new JRadioButton("NO");
@@ -32,8 +42,6 @@ public class CreateServer {
         botProtectionGroup.add(botNo);
         botProtectionPanel.add(botYes);
         botProtectionPanel.add(botNo);
-
-        gbc.gridx = 1;
         frame.add(botProtectionPanel, gbc);
 
         // Captcha Type
@@ -42,6 +50,7 @@ public class CreateServer {
         JLabel captchaTypeLabel = new JLabel("Captcha Type:");
         frame.add(captchaTypeLabel, gbc);
 
+        gbc.gridx = 1;
         JPanel captchaPanel = new JPanel(new FlowLayout());
         JButton mathButton = new JButton("MATH");
         JButton wordsButton = new JButton("WORDS");
@@ -49,16 +58,13 @@ public class CreateServer {
         captchaPanel.add(mathButton);
         captchaPanel.add(wordsButton);
         captchaPanel.add(patternsButton);
-
-        gbc.gridx = 1;
         frame.add(captchaPanel, gbc);
 
         // Bot Protection Info Label
         gbc.gridy++;
         gbc.gridx = 0;
         gbc.gridwidth = 2;
-        JLabel botProtectionInfoLabel = new JLabel(
-                "(Captcha will be requested before log on to server)", SwingConstants.CENTER);
+        JLabel botProtectionInfoLabel = new JLabel("(Captcha will be requested before log on to server)", SwingConstants.CENTER);
         botProtectionInfoLabel.setFont(new Font("Arial", Font.ITALIC, 12));
         frame.add(botProtectionInfoLabel, gbc);
 
@@ -73,61 +79,130 @@ public class CreateServer {
         JTextField portNumberField = new JTextField("10619");
         frame.add(portNumberField, gbc);
 
-        // Security Modules
+        // Password
         gbc.gridy++;
         gbc.gridx = 0;
-        JLabel securityModulesLabel = new JLabel("Security Modules:");
-        frame.add(securityModulesLabel, gbc);
+        JLabel passwordLabel = new JLabel("Password:");
+        frame.add(passwordLabel, gbc);
 
         gbc.gridx = 1;
-        JButton modulesButton = new JButton("Modules");
-        frame.add(modulesButton, gbc);
+        JPasswordField passwordField = new JPasswordField(20);
+        frame.add(passwordField, gbc);
 
-        // Security Modules Info Label
+        // Device Selection
         gbc.gridy++;
         gbc.gridx = 0;
         gbc.gridwidth = 2;
-        JLabel securityModulesInfoLabel = new JLabel(
-                "(Protects server file)", SwingConstants.CENTER);
-        securityModulesInfoLabel.setFont(new Font("Arial", Font.ITALIC, 12));
-        frame.add(securityModulesInfoLabel, gbc);
+        JLabel deviceLabel = new JLabel("Select Devices:");
+        deviceLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        frame.add(deviceLabel, gbc);
+
+        gbc.gridy++;
+        JPanel devicePanel = new JPanel(new GridLayout(0, 1, 10, 10));
+        List<String> deviceNames = storageDevices.getStorageDeviceNames();
+        Map<String, String> diskToSerialMap = new HashMap<>();
+        List<String> selectedSerials = new ArrayList<>();
+
+        for (String device : deviceNames) {
+            diskToSerialMap.put(device, "Serial-" + device.hashCode());
+            JToggleButton deviceToggleButton = new JToggleButton(device);
+
+            deviceToggleButton.addActionListener(e -> {
+                if (deviceToggleButton.isSelected()) {
+                    selectedSerials.add(diskToSerialMap.get(device));
+                } else {
+                    selectedSerials.remove(diskToSerialMap.get(device));
+                }
+            });
+
+            devicePanel.add(deviceToggleButton);
+        }
+        frame.add(devicePanel, gbc);
+
+        // Encryption Methods
+        gbc.gridy++;
+        gbc.gridx = 0;
+        gbc.gridwidth = 1;
+        JLabel encryptionLabel = new JLabel("Encryption Methods:");
+        frame.add(encryptionLabel, gbc);
+
+        gbc.gridx = 1;
+        JPanel encryptionMethodsPanel = new JPanel(new GridLayout(3, 2, 10, 10));
+        JCheckBox aesCheckbox = new JCheckBox("AES");
+        JCheckBox serpentCheckbox = new JCheckBox("Serpent");
+        JCheckBox twofishCheckbox = new JCheckBox("Twofish");
+        JCheckBox camelliaCheckbox = new JCheckBox("Camellia");
+        JCheckBox kuzCheckbox = new JCheckBox("Kuznyechik");
+
+        encryptionMethodsPanel.add(aesCheckbox);
+        encryptionMethodsPanel.add(serpentCheckbox);
+        encryptionMethodsPanel.add(twofishCheckbox);
+        encryptionMethodsPanel.add(camelliaCheckbox);
+        encryptionMethodsPanel.add(kuzCheckbox);
+        frame.add(encryptionMethodsPanel, gbc);
+
+        // Decryption Order
+        gbc.gridy++;
+        gbc.gridx = 0;
+        JLabel orderLabel = new JLabel("Decryption Order:");
+        frame.add(orderLabel, gbc);
+
+        gbc.gridx = 1;
+        DefaultListModel<String> orderListModel = new DefaultListModel<>();
+        JList<String> orderList = new JList<>(orderListModel);
+        JScrollPane scrollPane = new JScrollPane(orderList);
+        frame.add(scrollPane, gbc);
+
+        ActionListener addToOrder = e -> {
+            JCheckBox source = (JCheckBox) e.getSource();
+            if (source.isSelected()) {
+                orderListModel.addElement(source.getText());
+            } else {
+                orderListModel.removeElement(source.getText());
+            }
+        };
+
+        aesCheckbox.addActionListener(addToOrder);
+        serpentCheckbox.addActionListener(addToOrder);
+        twofishCheckbox.addActionListener(addToOrder);
+        camelliaCheckbox.addActionListener(addToOrder);
+        kuzCheckbox.addActionListener(addToOrder);
 
         // Continue Button
         gbc.gridy++;
+        gbc.gridx = 0;
+        gbc.gridwidth = 2;
         JButton continueButton = new JButton("Continue");
         frame.add(continueButton, gbc);
 
-        // Add ActionListener for Continue Button
-        continueButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                String portNumber = portNumberField.getText();
-                String botProtection = botYes.isSelected() ? "YES" : "NO";
-                String captchaType = "None";
+        // Action Listener for Continue
+        continueButton.addActionListener(e -> {
+            String portNumber = portNumberField.getText();
+            String password = new String(passwordField.getPassword());
+            String botProtection = botYes.isSelected() ? "YES" : "NO";
+            List<String> encryptionMethods = new ArrayList<>();
+            if (aesCheckbox.isSelected()) encryptionMethods.add("AES");
+            if (serpentCheckbox.isSelected()) encryptionMethods.add("Serpent");
+            if (twofishCheckbox.isSelected()) encryptionMethods.add("Twofish");
+            if (camelliaCheckbox.isSelected()) encryptionMethods.add("Camellia");
+            if (kuzCheckbox.isSelected()) encryptionMethods.add("Kuznyechik");
 
-                // Determine which captcha type was selected
-                if (mathButton.getModel().isPressed()) {
-                    captchaType = "MATH";
-                } else if (wordsButton.getModel().isPressed()) {
-                    captchaType = "WORDS";
-                } else if (patternsButton.getModel().isPressed()) {
-                    captchaType = "PATTERNS";
-                }
-
-                // Show the collected data
-                JOptionPane.showMessageDialog(frame,
-                        "Port Number: " + portNumber + "\nBot Protection: " + botProtection + "\nCaptcha Type: " + captchaType,
-                        "Server Configuration",
-                        JOptionPane.INFORMATION_MESSAGE);
-            }
+            JOptionPane.showMessageDialog(frame,
+                    "Port Number: " + portNumber + "\nPassword: " + password + "\nBot Protection: " + botProtection +
+                            "\nEncryption Methods: " + encryptionMethods + "\nSelected Devices: " + selectedSerials,
+                    "Server Configuration",
+                    JOptionPane.INFORMATION_MESSAGE);
         });
 
-        // Set the frame properties
+        // Frame Settings
         frame.setTitle("Create Server");
-        frame.setSize(600, 600);
+        frame.setSize(700, 800);
+        frame.setVisible(true);
     }
 	
 	public static void createServer2(JFrame frame) {
+        frame.getContentPane().removeAll();
+
         // Set the layout
         frame.setLayout(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
@@ -215,9 +290,7 @@ public class CreateServer {
                 try {
                     int rateLimitValue = Integer.parseInt(rateLimit);
 
-                    // Show success message or proceed with logic
-                    JOptionPane.showMessageDialog(frame, "Server Created Successfully!", "Success",
-                            JOptionPane.INFORMATION_MESSAGE);
+                    createServer3(frame);
 
                 } catch (NumberFormatException ex) {
                     JOptionPane.showMessageDialog(frame, "Please enter a valid number for Rate Limit.", "Error",
@@ -228,11 +301,12 @@ public class CreateServer {
 
         // Set the frame properties
         frame.setTitle("Create Server");
-        frame.setSize(500, 500);
+        frame.setSize(800, 500);
     }
 	
 	public static void createServer1(JFrame frame) {
         // Set the layout
+        frame.getContentPane().removeAll();
         frame.setLayout(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 10, 10, 10); // Add padding
@@ -323,8 +397,7 @@ public class CreateServer {
                 if (fileName.isEmpty()) {
                     JOptionPane.showMessageDialog(frame, "Please enter a server file name.", "Error", JOptionPane.ERROR_MESSAGE);
                 } else {
-                    JOptionPane.showMessageDialog(frame, "Server Created Successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
-                    // Add your logic to handle the server creation
+                    createServer2(frame);
                 }
             }
         });

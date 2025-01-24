@@ -10,23 +10,31 @@ public class HostServer {
     private JLabel pageLabel;
     private DefaultComboBoxModel<String> serverModel;
 
-    //Access the App instance
+    //Access the instances
     static App app = CentralManager.getApp();
     
+    static CreateServer createServer = CentralManager.getCreateServer();
+
+    
     public void hostServer(JFrame frame) {
-        frame.getContentPane().removeAll();
-        frame.setSize(500, 400);
+    	frame.getContentPane().removeAll();
+        frame.setSize(600, 400);
         frame.setLayout(new GridBagLayout());
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
 
+        // Instruction Label
         JLabel instructionLabel = new JLabel("Load a server from the dropdown below. Otherwise place it under the servers folder.");
+        instructionLabel.setHorizontalAlignment(SwingConstants.CENTER);
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.gridwidth = 3;
         frame.add(instructionLabel, gbc);
 
+        // Server Dropdown
         serverModel = new DefaultComboBoxModel<>();
         serverDropdown = new JComboBox<>(serverModel);
         gbc.gridx = 0;
@@ -34,11 +42,14 @@ public class HostServer {
         gbc.gridwidth = 2;
         frame.add(serverDropdown, gbc);
 
+        // Select Button
         JButton selectButton = new JButton("Select");
         gbc.gridx = 2;
         gbc.gridy = 1;
+        gbc.gridwidth = 1;
         frame.add(selectButton, gbc);
 
+        // Navigation Buttons
         refreshButton = new JButton("Refresh");
         gbc.gridx = 0;
         gbc.gridy = 2;
@@ -54,11 +65,14 @@ public class HostServer {
         gbc.gridy = 2;
         frame.add(nextButton, gbc);
 
+        // Page Label
         pageLabel = new JLabel("Page 1/3");
+        pageLabel.setHorizontalAlignment(SwingConstants.CENTER);
         gbc.gridx = 1;
         gbc.gridy = 3;
         frame.add(pageLabel, gbc);
 
+        // Bottom Buttons
         createServerButton = new JButton("Create Server");
         gbc.gridx = 0;
         gbc.gridy = 4;
@@ -76,6 +90,7 @@ public class HostServer {
 
         frame.setVisible(true);
 
+        // Load Servers and Add Listeners
         addActionListeners(frame);
         loadServerFiles();
     }
@@ -99,7 +114,7 @@ public class HostServer {
         refreshButton.addActionListener(e -> loadServerFiles());
         previousButton.addActionListener(e -> JOptionPane.showMessageDialog(frame, "Previous clicked!"));
         nextButton.addActionListener(e -> JOptionPane.showMessageDialog(frame, "Next clicked!"));
-        createServerButton.addActionListener(e -> JOptionPane.showMessageDialog(frame, "Create Server clicked!"));
+        createServerButton.addActionListener(e -> createServer.createServer1(frame));
         useServerButton.addActionListener(e -> JOptionPane.showMessageDialog(frame, "Use Server clicked!"));
         backButton.addActionListener(e -> app.loggedInMenu(frame, null, null));
     }

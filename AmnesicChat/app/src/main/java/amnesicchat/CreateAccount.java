@@ -66,6 +66,9 @@ public class CreateAccount {
     //Access the App instance
     static App app = CentralManager.getApp();
     
+    static StorageDevices storageDevices = CentralManager.getStorageDevices();
+    static CipherData cipherData = CentralManager.getCipherData();
+    
     public void setupSuccess(JFrame frame, List<String> selected) {
 		// Clear frame
 		frame.getContentPane().removeAll();
@@ -341,7 +344,7 @@ public void createPassword(JFrame frame) {
                 keys.add(passwordHash);
 
                 // Encrypt the file content with the keys and the specified encryption order
-                byte[] encryptedData = encryptFileWithOrder(keyFile, keys, encryptionOrder);
+                byte[] encryptedData = cipherData.encryptFileWithOrder(keyFile, keys, encryptionOrder);
                 
                 // Save the encrypted file
                 File encryptedFile = new File(System.getProperty("user.home") + File.separator + "communication_key_encrypted.txt");
@@ -377,155 +380,6 @@ private String generateRandomKey() {
  random.nextBytes(keyBytes);
  String key = Base64.getEncoder().encodeToString(keyBytes); // UTF-8 compatible string
  return hash.hashSHA512(key); // Hash the key using SHA-512
-}
-private byte[] encryptFileWithOrder(File file, List<byte[]> keys, ArrayList<String> encryptionOrder) throws Exception {
-    byte[] fileContent = Files.readAllBytes(file.toPath());
-    byte[] encryptedData = fileContent;
-
-    for (String algorithm : encryptionOrder) {
-        switch (algorithm) {
-            case "AES":
-                encryptedData = encryptWithAES(encryptedData, keys);
-                break;
-            case "Serpent":
-                encryptedData = encryptWithSerpent(encryptedData, keys);
-                break;
-            case "Twofish":
-                encryptedData = encryptWithTwofish(encryptedData, keys);
-                break;
-            case "Camellia":
-                encryptedData = encryptWithCamellia(encryptedData, keys);
-                break;
-            case "Kuznyechik":
-                encryptedData = encryptWithKuznyechik(encryptedData, keys);
-                break;
-            default:
-                throw new IllegalArgumentException("Unknown encryption algorithm: " + algorithm);
-        }
-    }
-    return encryptedData;
-}
-
-public byte[] encryptWithAES(byte[] deviceID, List<byte[]> keys) throws Exception {
-    Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-    byte[] encryptedData = deviceID;
-
-    // Encrypt using the keys in reverse order
-    for (int i = keys.size() - 1; i >= 0; i--) {
-        SecretKeySpec keySpec = new SecretKeySpec(keys.get(i), "AES");
-        IvParameterSpec ivSpec = new IvParameterSpec(new byte[16]); // Use a zero IV for simplicity
-
-        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
-        encryptedData = cipher.doFinal(encryptedData);  // Encrypt the data using the current key
-    }
-
-    return encryptedData;
-}
-
-// Serpent Encryption with Multiple Keys and PKCS7Padding
-//.addProvider(new BouncyCastleProvider());
-public byte[] encryptWithSerpent(byte[] deviceID, List<byte[]> keys) throws Exception {
-    Cipher cipher = Cipher.getInstance("Serpent/CBC/PKCS7Padding");
-    byte[] encryptedData = deviceID;
-
-    // Encrypt using the keys in reverse order
-    for (int i = keys.size() - 1; i >= 0; i--) {
-        SecretKeySpec keySpec = new SecretKeySpec(keys.get(i), "Serpent");
-        IvParameterSpec ivSpec = new IvParameterSpec(new byte[16]); // Use a zero IV for simplicity
-
-        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
-        encryptedData = cipher.doFinal(encryptedData);  // Encrypt the data using the current key
-    }
-
-    return encryptedData;
-}
-
-// Twofish Encryption with Multiple Keys and PKCS7Padding
-public byte[] encryptWithTwofish(byte[] deviceID, List<byte[]> keys) throws Exception {
-    Cipher cipher = Cipher.getInstance("Twofish/CBC/PKCS7Padding");
-    byte[] encryptedData = deviceID;
-
-    // Encrypt using the keys in reverse order
-    for (int i = keys.size() - 1; i >= 0; i--) {
-        SecretKeySpec keySpec = new SecretKeySpec(keys.get(i), "Twofish");
-        IvParameterSpec ivSpec = new IvParameterSpec(new byte[16]); // Use a zero IV for simplicity
-
-        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
-        encryptedData = cipher.doFinal(encryptedData);  // Encrypt the data using the current key
-    }
-
-    return encryptedData;
-}
-
-// Camellia Encryption with Multiple Keys and PKCS7Padding
-public byte[] encryptWithCamellia(byte[] deviceID, List<byte[]> keys) throws Exception {
-    Cipher cipher = Cipher.getInstance("Camellia/CBC/PKCS7Padding");
-    byte[] encryptedData = deviceID;
-
-    // Encrypt using the keys in reverse order
-    for (int i = keys.size() - 1; i >= 0; i--) {
-        SecretKeySpec keySpec = new SecretKeySpec(keys.get(i), "Camellia");
-        IvParameterSpec ivSpec = new IvParameterSpec(new byte[16]); // Use a zero IV for simplicity
-
-        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
-        encryptedData = cipher.doFinal(encryptedData);  // Encrypt the data using the current key
-    }
-
-    return encryptedData;
-}
-
-// Kuznyechik (GOST) Encryption with Multiple Keys and PKCS7Padding
-public byte[] encryptWithKuznyechik(byte[] deviceID, List<byte[]> keys) throws Exception {
-    Cipher cipher = Cipher.getInstance("GOST3412-2015/CBC/PKCS7Padding");
-    byte[] encryptedData = deviceID;
-
-    // Encrypt using the keys in reverse order
-    for (int i = keys.size() - 1; i >= 0; i--) {
-        SecretKeySpec keySpec = new SecretKeySpec(keys.get(i), "GOST3412-2015");
-        IvParameterSpec ivSpec = new IvParameterSpec(new byte[16]); // Use a zero IV for simplicity
-
-        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
-        encryptedData = cipher.doFinal(encryptedData);  // Encrypt the data using the current key
-    }
-
-    return encryptedData;
-}
-
-private void updateDeviceList(JPanel createAccountPanel) {
-// Get the available storage devices based on the mode selected
-List<String> availableDevices = getAvailableStorageDevices();
-
-// Find the devicePanel in the createAccountPanel and update it
-JPanel devicePanel = null;
-Component[] components = createAccountPanel.getComponents();
-
-// Look for the existing device panel
-for (Component component : components) {
-    if (component instanceof JPanel && ((JPanel) component).getLayout() instanceof GridLayout) {
-        devicePanel = (JPanel) component;
-        break; // Found the existing device panel
-    }
-}
-
-// If no devicePanel found, create a new one
-if (devicePanel == null) {
-    devicePanel = new JPanel();
-    devicePanel.setLayout(new GridLayout(0, 1, 10, 10)); // Use a grid layout
-    createAccountPanel.add(devicePanel);
-} else {
-    devicePanel.removeAll();  // Clear previous buttons
-}
-
-// Create toggle buttons for the available devices
-for (String device : availableDevices) {
-    JToggleButton deviceToggleButton = new JToggleButton(device);
-    deviceToggleButton.setToolTipText("Click to select " + device);
-    devicePanel.add(deviceToggleButton);  // Add the toggle button
-}
-
-// Refresh the devicePanel
-createAccountPanel.revalidate();
-createAccountPanel.repaint();
 }
 
 public JPanel modulePanel; // Holds each individual module
@@ -1044,25 +898,6 @@ try (BufferedReader reader = new BufferedReader(new FileReader(gpgKeyFile))) {
 JOptionPane.showMessageDialog(frame, "GPG key file not found.", "Error", JOptionPane.ERROR_MESSAGE);
 }
 
-/*
-// Add information labels
-String[] labels = {
-"Name: " + name,
-"E-mail: " + email,
-"Expiry: " + expiry,
-"Algorithm: " + algorithm,
-"Comments: " + comments,
-"Fingerprint: " + fingerprint
-};
-
-for (String text : labels) {
-JLabel label = new JLabel(text);
-label.setFont(new Font("Arial", Font.PLAIN, 14));
-label.setAlignmentX(Component.CENTER_ALIGNMENT);
-contentPanel.add(label);
-contentPanel.add(Box.createRigidArea(new Dimension(0, 10))); // Spacer
-}*/
-
 // Add the buttons panel
 JPanel buttonPanel = new JPanel();
 buttonPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 0));
@@ -1222,43 +1057,6 @@ frame.repaint();
 	    return true;
 	}
 
-	public List<String> getAvailableStorageDevices() {
-	    List<String> devices = new ArrayList<>();
-
-	        // Use hardware information (SystemInfo) to get devices
-	        SystemInfo systemInfo = new SystemInfo();
-	        List<HWDiskStore> diskStores = systemInfo.getHardware().getDiskStores();
-
-	        for (HWDiskStore diskStore : diskStores) {
-	            devices.add(diskStore.getName());
-	        } 	   
-	    return devices;
-	}
-    
-
-    // Fetch storage device names using OSHI
-    public List<String> getStorageDeviceNames() {
-        List<String> deviceNames = new ArrayList<>();
-        SystemInfo systemInfo = new SystemInfo();
-        oshi.hardware.HardwareAbstractionLayer hardware = systemInfo.getHardware();
-        List<HWDiskStore> diskStores = hardware.getDiskStores();
-
-        // Iterate through each disk and add its name to the list, filtering out logical volumes
-        for (HWDiskStore disk : diskStores) {
-            String diskName = disk.getModel();  // Get the model of the disk (e.g., "Samsung 970 Evo")
-            
-            // Filter out logical volumes or devices with names that suggest they are not physical
-            if (!isLogicalVolume(diskName)) {
-                deviceNames.add(diskName);
-            }
-        }
-
-        if (deviceNames.isEmpty()) {
-            deviceNames.add("No devices found.");
-        }
-
-        return deviceNames;
-    }
 	
     public void createAccount(JFrame frame) {
         SwingUtilities.invokeLater(() -> {
@@ -1266,7 +1064,7 @@ frame.repaint();
             frame.setSize(650, 450);
 
             // Fetch available storage devices using OSHI
-            List<String> deviceNames = getStorageDeviceNames();
+            List<String> deviceNames = storageDevices.getStorageDeviceNames();
 
             // Mock serial numbers for each device
             List<String> serialNumbers = deviceNames.stream()
@@ -1408,17 +1206,5 @@ frame.repaint();
             frame.revalidate();
             frame.repaint();
         });
-    }
-
-    // Function to check if the device name suggests it is a logical volume
-    private boolean isLogicalVolume(String deviceName) {
-        // Check if the device name contains typical logical volume keywords
-        String[] logicalKeywords = {"logical", "volume", "raid", "virtual", "part", "mapper", "md"};
-        for (String keyword : logicalKeywords) {
-            if (deviceName.toLowerCase().contains(keyword)) {
-                return true; // It's likely a logical volume
-            }
-        }
-        return false; // Otherwise, assume it's a physical device
     }
 }

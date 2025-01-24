@@ -89,6 +89,10 @@ public class App {
     //Access Chat
     static ChatSession chatSession = CentralManager.getChatSession();
     
+    static CipherData cipherData = CentralManager.getCipherData();
+    
+    static StorageDevices storageDevices = CentralManager.getStorageDevices();
+    
     // Variables for account creation
     public boolean strictMode = false; // Enforce strict account protection
     public List<String> hashedSerials = new ArrayList<>(); //Device ID encryption key
@@ -493,7 +497,7 @@ public class App {
             JPanel devicePanel = new JPanel();
             devicePanel.setLayout(new GridLayout(0, 1, 10, 10));
 
-            List<String> deviceNames = createAccount.getStorageDeviceNames();
+            List<String> deviceNames = storageDevices.getStorageDeviceNames();
             Map<String, String> diskToSerialMap = new HashMap<>();
             for (String device : deviceNames) {
                 diskToSerialMap.put(device, "Serial-" + device.hashCode());
@@ -623,7 +627,7 @@ public class App {
                     }
 
                     // Decrypt the file using the keys and selected order
-                    byte[] decryptedData = decryptFileWithOrder(fileContent, keys, selectedOrder);
+                    byte[] decryptedData = cipherData.decryptFileWithOrder(fileContent, keys, selectedOrder);
 
                     // Parse the decrypted data
                     String decryptedText = new String(decryptedData, StandardCharsets.UTF_8);
@@ -660,140 +664,6 @@ public class App {
             if (b < 0 || b > 127) return false; // Outside ASCII range
         }
         return true;
-    }
-
-
-    // Decryption Functions
-    private ArrayList<String> getDecryptionOrder() {
-        ArrayList<String> decryptionOrder = new ArrayList<>();
-        // Add algorithms in reverse of encryption order
-        decryptionOrder.add("Kuznyechik");
-        decryptionOrder.add("Camellia");
-        decryptionOrder.add("Twofish");
-        decryptionOrder.add("Serpent");
-        decryptionOrder.add("AES");
-        return decryptionOrder;
-    }
-
- // Decrypt Function with dynamic decryption order
-    private byte[] decryptFileWithOrder(byte[] encryptedData, List<byte[]> keys, ArrayList<String> encryptionOrder) throws Exception {
-        byte[] decryptedData = encryptedData;
-
-        // Reverse the order for decryption
-        Collections.reverse(encryptionOrder);
-
-        for (String algorithm : encryptionOrder) {
-            switch (algorithm) {
-                case "AES":
-                    decryptedData = decryptWithAES(decryptedData, keys);
-                    break;
-                case "Serpent":
-                    decryptedData = decryptWithSerpent(decryptedData, keys);
-                    break;
-                case "Twofish":
-                    decryptedData = decryptWithTwofish(decryptedData, keys);
-                    break;
-                case "Camellia":
-                    decryptedData = decryptWithCamellia(decryptedData, keys);
-                    break;
-                case "Kuznyechik":
-                    decryptedData = decryptWithKuznyechik(decryptedData, keys);
-                    break;
-                default:
-                    throw new IllegalArgumentException("Unknown decryption algorithm: " + algorithm);
-            }
-        }
-        return decryptedData;
-    }
-    
-    private void handleDecryptedData(byte[] decryptedData) {
-        // Convert decrypted data to a string assuming it was originally a text string
-        try {
-            String decryptedString = new String(decryptedData, StandardCharsets.UTF_8);
-            System.out.println("Decrypted Data: " + decryptedString);  // Prints decrypted text
-        } catch (Exception e) {
-            System.err.println("Error converting decrypted data: " + e.getMessage());
-        }
-    }
-
-    public byte[] decryptWithAES(byte[] encryptedData, List<byte[]> keys) throws Exception {
-        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-        byte[] decryptedData = encryptedData;
-
-        // Decrypt using the keys in reverse order
-        for (int i = keys.size() - 1; i >= 0; i--) {
-            SecretKeySpec keySpec = new SecretKeySpec(keys.get(i), "AES");
-            IvParameterSpec ivSpec = new IvParameterSpec(new byte[16]);
-
-            cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
-            decryptedData = cipher.doFinal(decryptedData);
-        }
-
-        return decryptedData;
-    }
-
-    public byte[] decryptWithSerpent(byte[] encryptedData, List<byte[]> keys) throws Exception {
-        Cipher cipher = Cipher.getInstance("Serpent/CBC/PKCS7Padding");
-        byte[] decryptedData = encryptedData;
-
-        // Decrypt using the keys in reverse order
-        for (int i = keys.size() - 1; i >= 0; i--) {
-            SecretKeySpec keySpec = new SecretKeySpec(keys.get(i), "Serpent");
-            IvParameterSpec ivSpec = new IvParameterSpec(new byte[16]);
-
-            cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
-            decryptedData = cipher.doFinal(decryptedData);
-        }
-
-        return decryptedData;
-    }
-
-    public byte[] decryptWithTwofish(byte[] encryptedData, List<byte[]> keys) throws Exception {
-        Cipher cipher = Cipher.getInstance("Twofish/CBC/PKCS7Padding");
-        byte[] decryptedData = encryptedData;
-
-        // Decrypt using the keys in reverse order
-        for (int i = keys.size() - 1; i >= 0; i--) {
-            SecretKeySpec keySpec = new SecretKeySpec(keys.get(i), "Twofish");
-            IvParameterSpec ivSpec = new IvParameterSpec(new byte[16]);
-
-            cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
-            decryptedData = cipher.doFinal(decryptedData);
-        }
-
-        return decryptedData;
-    }
-
-    public byte[] decryptWithCamellia(byte[] encryptedData, List<byte[]> keys) throws Exception {
-        Cipher cipher = Cipher.getInstance("Camellia/CBC/PKCS7Padding");
-        byte[] decryptedData = encryptedData;
-
-        // Decrypt using the keys in reverse order
-        for (int i = keys.size() - 1; i >= 0; i--) {
-            SecretKeySpec keySpec = new SecretKeySpec(keys.get(i), "Camellia");
-            IvParameterSpec ivSpec = new IvParameterSpec(new byte[16]);
-
-            cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
-            decryptedData = cipher.doFinal(decryptedData);
-        }
-
-        return decryptedData;
-    }
-
-    public byte[] decryptWithKuznyechik(byte[] encryptedData, List<byte[]> keys) throws Exception {
-        Cipher cipher = Cipher.getInstance("GOST3412-2015/CBC/PKCS7Padding");
-        byte[] decryptedData = encryptedData;
-
-        // Decrypt using the keys in reverse order
-        for (int i = keys.size() - 1; i >= 0; i--) {
-            SecretKeySpec keySpec = new SecretKeySpec(keys.get(i), "GOST3412-2015");
-            IvParameterSpec ivSpec = new IvParameterSpec(new byte[16]);
-
-            cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
-            decryptedData = cipher.doFinal(decryptedData); 
-        }
-
-        return decryptedData;
     }
 
     public static void main(String[] args) {
