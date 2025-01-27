@@ -25,6 +25,7 @@ import javax.crypto.spec.IvParameterSpec;
 import java.net.ServerSocket;
 import java.net.SocketException;
 import java.net.Socket;
+import java.net.InetSocketAddress;
 
 public class App {
 	
@@ -93,6 +94,13 @@ public class App {
     
     static StorageDevices storageDevices = CentralManager.getStorageDevices();
     
+    static {
+        if (storageDevices == null) {
+            System.err.println("StorageDevices is null. Creating a fallback instance.");
+            storageDevices = new StorageDevices(); // Provide a fallback instance
+        }
+    }
+    
     // Variables for account creation
     public boolean strictMode = false; // Enforce strict account protection
     public List<String> hashedSerials = new ArrayList<>(); //Device ID encryption key
@@ -101,17 +109,21 @@ public class App {
     private Thread pingListenerThread;
 
     public void loggedInMenu(JFrame frame, String username, String publicFingerprint) {
+        // Stop the ping listener if it is already running
+        stopPingListener();
+
         // Clear frame
         frame.getContentPane().removeAll();
-        frame.setTitle("AmnesicChat");
+        frame.setTitle("AmnesicChat - Main Menu");
 
         this.username = username;
+
         // Set frame size
         frame.setSize(800, 750);
 
         // Create the main panel
-        JPanel panel = new JPanel();
-        panel.setLayout(null); // Using null layout for custom positioning
+        JPanel appPanel = new JPanel();
+        appPanel.setLayout(null); // Using null layout for custom positioning
 
         // Add AmnesicChat label
         JLabel imageLabel = new JLabel();
@@ -124,7 +136,7 @@ public class App {
         int imageLabelWidth = 650;
         int imageLabelHeight = 120;
         imageLabel.setBounds((frame.getWidth() - imageLabelWidth) / 2, 20, imageLabelWidth, imageLabelHeight);
-        panel.add(imageLabel);
+        appPanel.add(imageLabel);
 
         // Add username label
         JLabel usernameLabel = new JLabel("Username: " + username + " (change)");
@@ -132,7 +144,7 @@ public class App {
         int usernameLabelWidth = 400;
         int usernameLabelHeight = 20;
         usernameLabel.setBounds((frame.getWidth() - usernameLabelWidth) / 2, 160, usernameLabelWidth, usernameLabelHeight);
-        panel.add(usernameLabel);
+        appPanel.add(usernameLabel);
 
         // Add fingerprint label
         JLabel fingerprintLabel = new JLabel("Fingerprint: " + publicFingerprint);
@@ -140,7 +152,7 @@ public class App {
         int fingerprintLabelWidth = 400;
         int fingerprintLabelHeight = 20;
         fingerprintLabel.setBounds((frame.getWidth() - fingerprintLabelWidth) / 2, 190, fingerprintLabelWidth, fingerprintLabelHeight);
-        panel.add(fingerprintLabel);
+        appPanel.add(fingerprintLabel);
 
         // Add fingerprint info label
         JLabel fingerprintInfo = new JLabel("<html>This fingerprint above is the public fingerprint. It can be shared with others to add you as a contact, just like saving a phone number.</html>");
@@ -148,7 +160,7 @@ public class App {
         int fingerprintInfoWidth = 550;
         int fingerprintInfoHeight = 40;
         fingerprintInfo.setBounds((frame.getWidth() - fingerprintInfoWidth) / 2, 220, fingerprintInfoWidth, fingerprintInfoHeight);
-        panel.add(fingerprintInfo);
+        appPanel.add(fingerprintInfo);
 
         // Create "Copy Fingerprint" button
         JButton copyFingerprintButton = new JButton("Copy Fingerprint");
@@ -165,7 +177,7 @@ public class App {
             JOptionPane.showMessageDialog(frame, "Fingerprint copied to clipboard!", "Success", JOptionPane.INFORMATION_MESSAGE);
         });
 
-        panel.add(copyFingerprintButton);
+        appPanel.add(copyFingerprintButton);
 
         // Add main buttons
         String[] buttonLabels = {"JOIN A SERVER", "PEER TO PEER", "HOST A SERVER", "SETTINGS", "QUIT"};
@@ -188,92 +200,105 @@ public class App {
                     button.addActionListener(e -> peerToPeer.peerToPeerUI(frame, false, username));
                     break;
                 case "HOST A SERVER":
-                    button.addActionListener(e -> {
-                        hostServer.hostServer(frame);
-                    });
+                    button.addActionListener(e -> hostServer.hostServer(frame));
                     break;
                 case "SETTINGS":
-                    button.addActionListener(e -> {
-                        settings.settingsUI();
-                    });
+                    button.addActionListener(e -> settings.settingsUI());
                     break;
             }
 
-            panel.add(button);
+            appPanel.add(button);
             initialYPosition += buttonHeight + buttonSpacing;
         }
 
         // Add panel to frame
-        frame.add(panel);
+        frame.add(appPanel);
 
         frame.revalidate();
         frame.repaint();
 
         // Start listening on port 10555
-        startPingListener(frame);
+        if (!isPortForward) {
+        	isPortForward = true;
+            startPingListener(frame);
+        }
+    }
+    
+private synchronized void startPingListener(JFrame frame) {
+    // Check if the ping listener is already running
+    if (isPortForward && pingListenerThread != null && pingListenerThread.isAlive()) {
+        System.out.println("Ping listener is already running on port 10555.");
+        return; // Exit if the listener is already active
     }
 
-    
-    private void startPingListener(JFrame frame) {
-        if (!isPortForward) { // Check if the port is already open
-            try {
-                serverSocket = new ServerSocket(10555); // Open the port
-                isPortForward = true; // Set the flag to true once the port is opened
+    try {
+        // Initialize the ServerSocket and allow address reuse
+        serverSocket = new ServerSocket();
+        serverSocket.setReuseAddress(true); // Allow reuse of the port
+        serverSocket.bind(new InetSocketAddress(10555)); // Bind to the port
 
-                pingListenerThread = new Thread(() -> {
-                    System.out.println("Ping listener started on port 10555.");
-                    while (!Thread.currentThread().isInterrupted()) {
-                        try {
-                            Socket clientSocket = serverSocket.accept(); // Wait for a connection
-                            SwingUtilities.invokeLater(() -> {
-                                chatSession.createChatRoomUI(frame, clientSocket, username);
-                            });
-                        } catch (SocketException e) {
-                            // Expected when the socket is closed
-                            if (!serverSocket.isClosed()) {
-                                e.printStackTrace();
-                            }
-                            System.out.println("Ping listener socket closed.");
-                            break; // Exit the loop
-                        } catch (IOException e) {
-                            if (!serverSocket.isClosed()) {
-                                e.printStackTrace();
-                            }
-                        }
+        isPortForward = true; // Mark the port as open
+
+        // Create the listener thread
+        pingListenerThread = new Thread(() -> {
+            System.out.println("Ping listener started on port 10555.");
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    // Accept incoming connections
+                    Socket clientSocket = serverSocket.accept();
+
+                    // Pass the socket to the chat session on the Swing thread
+                    SwingUtilities.invokeLater(() -> {
+                        chatSession.createChatRoomUI(frame, clientSocket, username);
+                    });
+                } catch (SocketException e) {
+                    // Handle expected socket closure
+                    if (!serverSocket.isClosed()) {
+                        e.printStackTrace();
                     }
-                    System.out.println("Ping listener thread exiting.");
-                });
-
-                pingListenerThread.start();
-            } catch (IOException e) {
-                isPortForward = false; // Reset the flag if the port fails to open
-                JOptionPane.showMessageDialog(frame, "Failed to open port 10555: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    System.out.println("Ping listener socket closed.");
+                    break; // Exit the loop
+                } catch (IOException e) {
+                    if (!serverSocket.isClosed()) {
+                        e.printStackTrace();
+                    }
+                }
             }
-        } else {
-            System.out.println("Port 10555 is already open.");
-        }
+            System.out.println("Ping listener thread exiting.");
+        });
+
+        // Start the thread
+        pingListenerThread.start();
+
+    } catch (IOException e) {
+        isPortForward = false; // Reset the flag if the port fails to open
+        JOptionPane.showMessageDialog(frame, "Failed to open port 10555: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
     }
+}
 
-    public void stopPingListener() {
-        try {
-            // Close the server socket
-            if (serverSocket != null && !serverSocket.isClosed()) {
-                serverSocket.close();
-                System.out.println("Port Closed - 1");
-
-            }
-
-            // Interrupt the listener thread
-            if (pingListenerThread != null && pingListenerThread.isAlive()) {
-                pingListenerThread.interrupt();
-                System.out.println("Port Closed - 2");
-            }
-        } catch (IOException e) {
-        	System.out.println("Port Open - 3");
-            e.printStackTrace();
+public synchronized void stopPingListener() {
+    try {
+        // Close the server socket
+        if (serverSocket != null && !serverSocket.isClosed()) {
+            serverSocket.close();
+            serverSocket = null;
+            System.out.println("Ping listener server socket closed.");
         }
+
+        // Interrupt the listener thread
+        if (pingListenerThread != null && pingListenerThread.isAlive()) {
+            pingListenerThread.interrupt();
+            pingListenerThread.join(); // Wait for the thread to finish
+            pingListenerThread = null; // Ensure it won't be reused
+            System.out.println("Ping listener thread stopped.");
+        }
+
+        isPortForward = false; // Reset the flag so the port can be reopened
+    } catch (IOException | InterruptedException e) {
+        System.err.println("Error stopping ping listener: " + e.getMessage());
+        e.printStackTrace();
     }
-    
+}
     public void mainMenu(JFrame frame) {
         // Ensure this method runs on EDT (Event Dispatch Thread for stability of program)
         SwingUtilities.invokeLater(new Runnable() {

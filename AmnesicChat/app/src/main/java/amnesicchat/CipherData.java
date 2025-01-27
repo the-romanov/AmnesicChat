@@ -9,8 +9,23 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.security.SecureRandom;
+import java.util.Base64;
+
 
 public class CipherData {
+		
+    static Hash hash = CentralManager.getHash();
+	
+	//Generate Random Key and Hash
+	public String generateRandomKey() {
+	 SecureRandom random = new SecureRandom();
+	 byte[] keyBytes = new byte[512]; // 4096 bits = 512 bytes
+	 random.nextBytes(keyBytes);
+	 String key = Base64.getEncoder().encodeToString(keyBytes); // UTF-8 compatible string
+	 return hash.hashSHA512(key); // Hash the key using SHA-512
+	}
+	
 	//ENCRYPTION
 	public byte[] encryptFileWithOrder(File file, List<byte[]> keys, ArrayList<String> encryptionOrder) throws Exception {
 	    byte[] fileContent = Files.readAllBytes(file.toPath());

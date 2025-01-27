@@ -6,12 +6,34 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Arrays;
+import javax.swing.*;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.security.*;
+import java.util.*;
+import javax.crypto.*;
+import javax.crypto.spec.*;
+import java.awt.event.*;
+import java.nio.file.Files;
+import java.security.Key;
+import javax.crypto.Cipher;
+import javax.crypto.spec.IvParameterSpec;
+import java.util.Base64;
 
 public class CreateServer {
     static CreateAccount createAccount = CentralManager.getCreateAccount();
     static CipherData cipherData = CentralManager.getCipherData();
     static StorageDevices storageDevices = CentralManager.getStorageDevices();
-
+    static {
+        if (storageDevices == null) {
+            System.err.println("CentralManager.getStorageDevices() returned null. Initializing StorageDevices manually.");
+            storageDevices = new StorageDevices();
+        }
+    }
+    
+    //Access the Hash instance
+    static Hash hash = CentralManager.getHash();
+    
     public static void createServer3(JFrame frame) {
         frame.getContentPane().removeAll();
         frame.setLayout(new GridBagLayout());
@@ -43,30 +65,6 @@ public class CreateServer {
         botProtectionPanel.add(botYes);
         botProtectionPanel.add(botNo);
         frame.add(botProtectionPanel, gbc);
-
-        // Captcha Type
-        gbc.gridy++;
-        gbc.gridx = 0;
-        JLabel captchaTypeLabel = new JLabel("Captcha Type:");
-        frame.add(captchaTypeLabel, gbc);
-
-        gbc.gridx = 1;
-        JPanel captchaPanel = new JPanel(new FlowLayout());
-        JButton mathButton = new JButton("MATH");
-        JButton wordsButton = new JButton("WORDS");
-        JButton patternsButton = new JButton("PATTERNS");
-        captchaPanel.add(mathButton);
-        captchaPanel.add(wordsButton);
-        captchaPanel.add(patternsButton);
-        frame.add(captchaPanel, gbc);
-
-        // Bot Protection Info Label
-        gbc.gridy++;
-        gbc.gridx = 0;
-        gbc.gridwidth = 2;
-        JLabel botProtectionInfoLabel = new JLabel("(Captcha will be requested before log on to server)", SwingConstants.CENTER);
-        botProtectionInfoLabel.setFont(new Font("Arial", Font.ITALIC, 12));
-        frame.add(botProtectionInfoLabel, gbc);
 
         // Port Number
         gbc.gridy++;
@@ -119,54 +117,42 @@ public class CreateServer {
         }
         frame.add(devicePanel, gbc);
 
-        // Encryption Methods
+        // Encryption Algorithms
         gbc.gridy++;
         gbc.gridx = 0;
-        gbc.gridwidth = 1;
-        JLabel encryptionLabel = new JLabel("Encryption Methods:");
+        gbc.gridwidth = 2;
+        JLabel encryptionLabel = new JLabel("Select Encryption Algorithms:");
+        encryptionLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
         frame.add(encryptionLabel, gbc);
 
-        gbc.gridx = 1;
-        JPanel encryptionMethodsPanel = new JPanel(new GridLayout(3, 2, 10, 10));
+        gbc.gridy++;
+        JPanel encryptionPanel = new JPanel(new GridLayout(0, 1, 10, 10));
         JCheckBox aesCheckbox = new JCheckBox("AES");
         JCheckBox serpentCheckbox = new JCheckBox("Serpent");
         JCheckBox twofishCheckbox = new JCheckBox("Twofish");
         JCheckBox camelliaCheckbox = new JCheckBox("Camellia");
         JCheckBox kuzCheckbox = new JCheckBox("Kuznyechik");
 
-        encryptionMethodsPanel.add(aesCheckbox);
-        encryptionMethodsPanel.add(serpentCheckbox);
-        encryptionMethodsPanel.add(twofishCheckbox);
-        encryptionMethodsPanel.add(camelliaCheckbox);
-        encryptionMethodsPanel.add(kuzCheckbox);
-        frame.add(encryptionMethodsPanel, gbc);
+        encryptionPanel.add(aesCheckbox);
+        encryptionPanel.add(serpentCheckbox);
+        encryptionPanel.add(twofishCheckbox);
+        encryptionPanel.add(camelliaCheckbox);
+        encryptionPanel.add(kuzCheckbox);
 
-        // Decryption Order
+        frame.add(encryptionPanel, gbc);
+
+        // Encryption Order Display
         gbc.gridy++;
-        gbc.gridx = 0;
-        JLabel orderLabel = new JLabel("Decryption Order:");
-        frame.add(orderLabel, gbc);
+        gbc.gridwidth = 2;
+        JLabel encryptionOrderLabel = new JLabel("Selected Encryption Order:");
+        encryptionOrderLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        frame.add(encryptionOrderLabel, gbc);
 
-        gbc.gridx = 1;
-        DefaultListModel<String> orderListModel = new DefaultListModel<>();
-        JList<String> orderList = new JList<>(orderListModel);
-        JScrollPane scrollPane = new JScrollPane(orderList);
-        frame.add(scrollPane, gbc);
-
-        ActionListener addToOrder = e -> {
-            JCheckBox source = (JCheckBox) e.getSource();
-            if (source.isSelected()) {
-                orderListModel.addElement(source.getText());
-            } else {
-                orderListModel.removeElement(source.getText());
-            }
-        };
-
-        aesCheckbox.addActionListener(addToOrder);
-        serpentCheckbox.addActionListener(addToOrder);
-        twofishCheckbox.addActionListener(addToOrder);
-        camelliaCheckbox.addActionListener(addToOrder);
-        kuzCheckbox.addActionListener(addToOrder);
+        gbc.gridy++;
+        JTextArea encryptionOrderArea = new JTextArea(3, 20); // Display area for encryption order
+        encryptionOrderArea.setEditable(false);
+        encryptionOrderArea.setText(""); // Initially empty
+        frame.add(new JScrollPane(encryptionOrderArea), gbc);
 
         // Continue Button
         gbc.gridy++;
@@ -180,24 +166,69 @@ public class CreateServer {
             String portNumber = portNumberField.getText();
             String password = new String(passwordField.getPassword());
             String botProtection = botYes.isSelected() ? "YES" : "NO";
-            List<String> encryptionMethods = new ArrayList<>();
-            if (aesCheckbox.isSelected()) encryptionMethods.add("AES");
-            if (serpentCheckbox.isSelected()) encryptionMethods.add("Serpent");
-            if (twofishCheckbox.isSelected()) encryptionMethods.add("Twofish");
-            if (camelliaCheckbox.isSelected()) encryptionMethods.add("Camellia");
-            if (kuzCheckbox.isSelected()) encryptionMethods.add("Kuznyechik");
 
-            JOptionPane.showMessageDialog(frame,
-                    "Port Number: " + portNumber + "\nPassword: " + password + "\nBot Protection: " + botProtection +
-                            "\nEncryption Methods: " + encryptionMethods + "\nSelected Devices: " + selectedSerials,
-                    "Server Configuration",
-                    JOptionPane.INFORMATION_MESSAGE);
+            List<byte[]> keys = new ArrayList<>();
+
+            // Hash the selected serials and add them to the key list
+            if (!selectedSerials.isEmpty()) {
+                List<String> hashedSerials = new ArrayList<>();
+                for (String serial : selectedSerials) {
+                    byte[] hashedBytes = hash.hashSHA256(serial);
+                    hashedSerials.add(Base64.getEncoder().encodeToString(hashedBytes)); // Convert to Base64 string
+                }
+
+                // Join the Base64 encoded hashed serials into one string
+                String serials = String.join(",", hashedSerials); // Join Base64 strings
+                byte[] hashedSerialsBytes = hash.hashSHA256(serials);
+                keys.add(hashedSerialsBytes);  // Add the byte[] directly
+            }
+
+            // Hash the password and add to the list as a byte[]
+            byte[] passwordHashBytes = hash.hashSHA256(password);
+            keys.add(passwordHashBytes); // Add the hashed password bytes directly
+
+            // Collect selected encryption methods for the order
+            ArrayList<String> encryptionOrder = new ArrayList<>();
+            if (aesCheckbox.isSelected()) encryptionOrder.add("AES");
+            if (serpentCheckbox.isSelected()) encryptionOrder.add("Serpent");
+            if (twofishCheckbox.isSelected()) encryptionOrder.add("Twofish");
+            if (camelliaCheckbox.isSelected()) encryptionOrder.add("Camellia");
+            if (kuzCheckbox.isSelected()) encryptionOrder.add("Kuznyechik");
+
+            // Update the encryption order display area
+            encryptionOrderArea.setText(String.join(", ", encryptionOrder)); // Show selected order in the text area
+
+            // Encrypt the concatenated string (plain text)
+            try {
+                String concatenatedString = botProtection;
+                byte[] concatenatedData = concatenatedString.getBytes(StandardCharsets.UTF_8);
+
+                // Encrypt the data using the generated keys and encryption order
+                File keyFile = new File(System.getProperty("user.home") + File.separator + "communication_key.txt");
+                byte[] encryptedData = cipherData.encryptFileWithOrder(keyFile, keys, encryptionOrder);
+
+                // Define the output directory and filename (using server name)
+                String userHome = System.getProperty("user.home");
+                String serverFileName = "server_config"; // To Update
+                File encryptedFile = new File(userHome, serverFileName + "_encrypted.txt");
+
+                // Write the encrypted data to the file
+                try (FileOutputStream fos = new FileOutputStream(encryptedFile)) {
+                    fos.write(encryptedData);
+                }
+
+                JOptionPane.showMessageDialog(frame, "File created and encrypted successfully:\n" + encryptedFile.getAbsolutePath(),
+                        "Success", JOptionPane.INFORMATION_MESSAGE);
+
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(frame, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                ex.printStackTrace();
+            }
         });
 
         // Frame Settings
         frame.setTitle("Create Server");
         frame.setSize(700, 800);
-        frame.setVisible(true);
     }
 	
 	public static void createServer2(JFrame frame) {

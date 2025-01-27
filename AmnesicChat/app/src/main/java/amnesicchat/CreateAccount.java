@@ -67,6 +67,13 @@ public class CreateAccount {
     static App app = CentralManager.getApp();
     
     static StorageDevices storageDevices = CentralManager.getStorageDevices();
+
+    static {
+        if (storageDevices == null) {
+            System.err.println("CentralManager.getStorageDevices() returned null. Initializing StorageDevices manually.");
+            storageDevices = new StorageDevices();
+        }
+    }
     static CipherData cipherData = CentralManager.getCipherData();
     
     public void setupSuccess(JFrame frame, List<String> selected) {
@@ -308,7 +315,7 @@ public void createPassword(JFrame frame) {
         username = usernameField.getText();
 
         // Generate the random communication key
-        String communicationKey = generateRandomKey();
+        String communicationKey = cipherData.generateRandomKey();
 
         String description = descriptionArea.getText();
 
@@ -371,15 +378,6 @@ public void createPassword(JFrame frame) {
 
     frame.revalidate();
     frame.repaint();
-}
-
-//Generate Random Key and Hash
-private String generateRandomKey() {
- SecureRandom random = new SecureRandom();
- byte[] keyBytes = new byte[512]; // 4096 bits = 512 bytes
- random.nextBytes(keyBytes);
- String key = Base64.getEncoder().encodeToString(keyBytes); // UTF-8 compatible string
- return hash.hashSHA512(key); // Hash the key using SHA-512
 }
 
 public JPanel modulePanel; // Holds each individual module
@@ -1064,6 +1062,11 @@ frame.repaint();
             frame.setSize(650, 450);
 
             // Fetch available storage devices using OSHI
+            if (storageDevices == null) {
+                System.err.println("Error: storageDevices is null. Cannot fetch storage device names.");
+                JOptionPane.showMessageDialog(frame, "No storage devices found. Please try again later.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
             List<String> deviceNames = storageDevices.getStorageDeviceNames();
 
             // Mock serial numbers for each device

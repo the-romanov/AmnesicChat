@@ -14,8 +14,7 @@ public class HostServer {
     static App app = CentralManager.getApp();
     
     static CreateServer createServer = CentralManager.getCreateServer();
-
-    
+ 
     public void hostServer(JFrame frame) {
     	frame.getContentPane().removeAll();
         frame.setSize(600, 400);
