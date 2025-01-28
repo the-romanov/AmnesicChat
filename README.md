@@ -1,5 +1,15 @@
 # AmnesicChat - The new way of communication.
 
+--
+
+Edit 28 January 2025 - I have been quite overambitious with this project (for school) hence no more work will be done here (unfortunately)
+
+However, AmnesicChat Lite: **https://github.com/the-romanov/AmnesicChat-Lite** will be taking over.
+
+The lite version of AmnesicChat will only include account security & Peer-To-Peer.
+
+--
+
 ## This project is under a MIT Licence. This means that this project is allowed to be used, even if commercially.
 ### Please give credit when using my work or where it is due
 
