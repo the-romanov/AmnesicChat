@@ -32,6 +32,7 @@ public class CreateServer {
     }
     
     private static String joinPassword;
+    private static List<String> serverTypes = new ArrayList<String>();
     private static String serverFileName;
     private static String serverDirectory;
     private static List<String> whitelist;
@@ -259,7 +260,7 @@ public class CreateServer {
             String serverKey = cipherData.generateRandomKey();
 
             // Hash the joinPassword before writing it to the file
-            String hashedJoinPassword = Base64.getEncoder().encodeToString(hash.hashSHA256(joinPassword)); // Hash the joinPassword and convert to Base64
+            String hashedJoinPassword = Base64.getEncoder().encodeToString(hash.hashSHA256(password)); // Hash the joinPassword and convert to Base64
 
             // Get the formatted string to save to file
             String formattedData = String.format("%s:%s:%s:%d:%s:%s",
@@ -443,114 +444,111 @@ public class CreateServer {
         return ipList;
     }
 	
-	public static void createServer1(JFrame frame) {
+    public static void createServer1(JFrame frame) {
+        frame.getContentPane().removeAll();
+        frame.setLayout(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridx = 0;
+        gbc.gridy = 0;
 
-	    // Set the layout
-	    frame.getContentPane().removeAll();
-	    frame.setLayout(new GridBagLayout());
-	    GridBagConstraints gbc = new GridBagConstraints();
-	    gbc.insets = new Insets(10, 10, 10, 10); // Add padding
-	    gbc.fill = GridBagConstraints.HORIZONTAL;
-	    gbc.gridx = 0;
-	    gbc.gridy = 0;
+        JLabel titleLabel = new JLabel("Create A Server", SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        gbc.gridwidth = 2;
+        frame.add(titleLabel, gbc);
 
-	    // Title Label
-	    JLabel titleLabel = new JLabel("Create A Server", SwingConstants.CENTER);
-	    titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
-	    gbc.gridwidth = 2;
-	    frame.add(titleLabel, gbc);
+        gbc.gridy++;
+        gbc.gridwidth = 1;
+        JLabel passwordLabel = new JLabel("Join Password:");
+        frame.add(passwordLabel, gbc);
 
-	    // Join Password
-	    gbc.gridy++;
-	    gbc.gridwidth = 1;
-	    JLabel passwordLabel = new JLabel("Join Password:");
-	    frame.add(passwordLabel, gbc);
+        gbc.gridx = 1;
+        JPasswordField passwordField = new JPasswordField();
+        frame.add(passwordField, gbc);
 
-	    gbc.gridx = 1;
-	    JPasswordField passwordField = new JPasswordField();
-	    frame.add(passwordField, gbc);
+        gbc.gridy++;
+        gbc.gridx = 0;
+        gbc.gridwidth = 2;
+        JLabel infoLabel = new JLabel("(you may leave this blank if you want to)", SwingConstants.CENTER);
+        infoLabel.setFont(new Font("Arial", Font.ITALIC, 12));
+        frame.add(infoLabel, gbc);
 
-	    // Info Label
-	    gbc.gridy++;
-	    gbc.gridx = 0;
-	    gbc.gridwidth = 2;
-	    JLabel infoLabel = new JLabel("(you may leave this blank if you want to)", SwingConstants.CENTER);
-	    infoLabel.setFont(new Font("Arial", Font.ITALIC, 12));
-	    frame.add(infoLabel, gbc);
+        gbc.gridy++;
+        gbc.gridwidth = 1;
+        gbc.gridx = 0;
+        JLabel fileNameLabel = new JLabel("Server File Name:");
+        frame.add(fileNameLabel, gbc);
 
-	    // Server File Name
-	    gbc.gridy++;
-	    gbc.gridwidth = 1;
-	    gbc.gridx = 0;
-	    JLabel fileNameLabel = new JLabel("Server File Name:");
-	    frame.add(fileNameLabel, gbc);
+        gbc.gridx = 1;
+        JTextField fileNameField = new JTextField();
+        frame.add(fileNameField, gbc);
 
-	    gbc.gridx = 1;
-	    JTextField fileNameField = new JTextField();
-	    frame.add(fileNameField, gbc);
+        gbc.gridy++;
+        gbc.gridx = 0;
+        JLabel fileDirectoryLabel = new JLabel("Server File Directory:");
+        frame.add(fileDirectoryLabel, gbc);
 
-	    // Server File Directory
-	    gbc.gridy++;
-	    gbc.gridx = 0;
-	    JLabel fileDirectoryLabel = new JLabel("Server File Directory:");
-	    frame.add(fileDirectoryLabel, gbc);
+        gbc.gridx = 1;
+        JPanel directoryPanel = new JPanel(new BorderLayout());
+        JTextField directoryField = new JTextField("Default");
+        JButton browseButton = new JButton("Browse");
 
-	    gbc.gridx = 1;
-	    JPanel directoryPanel = new JPanel(new BorderLayout());
-	    JTextField directoryField = new JTextField("Default");
-	    JButton browseButton = new JButton(new ImageIcon("path/to/icon.png")); // Add your icon path
-	    browseButton.setToolTipText("Browse Directory");
+        directoryPanel.add(directoryField, BorderLayout.CENTER);
+        directoryPanel.add(browseButton, BorderLayout.EAST);
+        frame.add(directoryPanel, gbc);
 
-	    directoryPanel.add(directoryField, BorderLayout.CENTER);
-	    directoryPanel.add(browseButton, BorderLayout.EAST);
-	    frame.add(directoryPanel, gbc);
+        // Server Types Selection
+        gbc.gridy++;
+        gbc.gridx = 0;
+        gbc.gridwidth = 2;
+        JLabel serverTypeLabel = new JLabel("Server Types:", SwingConstants.CENTER);
+        frame.add(serverTypeLabel, gbc);
 
-	    // Continue Button
-	    gbc.gridy++;
-	    gbc.gridx = 0;
-	    gbc.gridwidth = 2;
-	    JButton continueButton = new JButton("Continue");
-	    frame.add(continueButton, gbc);
+        gbc.gridy++;
+        JPanel serverTypePanel = new JPanel();
+        JCheckBox directoryCheck = new JCheckBox("DIRECTORY");
+        JCheckBox chatCheck = new JCheckBox("CHAT");
+        JCheckBox pingCheck = new JCheckBox("PING");
 
-	    // Add ActionListener for Browse Button
-	    browseButton.addActionListener(new ActionListener() {
-	        @Override
-	        public void actionPerformed(ActionEvent e) {
-	            JFileChooser fileChooser = new JFileChooser();
-	            fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-	            int option = fileChooser.showOpenDialog(frame);
-	            if (option == JFileChooser.APPROVE_OPTION) {
-	                directoryField.setText(fileChooser.getSelectedFile().getAbsolutePath());
-	            }
-	        }
-	    });
+        serverTypePanel.add(directoryCheck);
+        serverTypePanel.add(chatCheck);
+        serverTypePanel.add(pingCheck);
+        frame.add(serverTypePanel, gbc);
 
-	    // Add ActionListener for Continue Button
-	    continueButton.addActionListener(new ActionListener() {
-	        @Override
-	        public void actionPerformed(ActionEvent e) {
-	            // Get values from the fields
-	            String password = new String(passwordField.getPassword());
-	            String fileName = fileNameField.getText();
-	            String directory = directoryField.getText();
+        gbc.gridy++;
+        JButton continueButton = new JButton("Continue");
+        frame.add(continueButton, gbc);
 
-	            joinPassword = password;
-	            serverFileName = fileName;
-	            serverDirectory = directory;
+        browseButton.addActionListener(e -> {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+            int option = fileChooser.showOpenDialog(frame);
+            if (option == JFileChooser.APPROVE_OPTION) {
+                directoryField.setText(fileChooser.getSelectedFile().getAbsolutePath());
+            }
+        });
 
-	            // Validate input and process
-	            if (fileName.isEmpty()) {
-	                JOptionPane.showMessageDialog(frame, "Please enter a server file name.", "Error", JOptionPane.ERROR_MESSAGE);
-	            } else {
-	                // You can now pass serverDetails to the next step or process it
-	                createServer2(frame);  // Assuming createServer2 method accepts the saved data
-	            }
-	        }
-	    });
+        continueButton.addActionListener(e -> {
+            String password = new String(passwordField.getPassword());
+            String fileName = fileNameField.getText();
+            String directory = directoryField.getText();
 
-	    // Set the frame properties
-	    frame.setTitle("Create Server");
-	    frame.setSize(400, 400);
-	}
+            serverTypes.clear();
+            if (directoryCheck.isSelected()) serverTypes.add("DIRECTORY");
+            if (chatCheck.isSelected()) serverTypes.add("CHAT");
+            if (pingCheck.isSelected()) serverTypes.add("PING");
+
+            if (fileName.isEmpty()) {
+                JOptionPane.showMessageDialog(frame, "Please enter a server file name.", "Error", JOptionPane.ERROR_MESSAGE);
+            } else {
+                createServer2(frame);
+            }
+        });
+
+        frame.setTitle("Create Server");
+        frame.setSize(400, 400);
+        frame.setVisible(true);
+    }
 
 }
