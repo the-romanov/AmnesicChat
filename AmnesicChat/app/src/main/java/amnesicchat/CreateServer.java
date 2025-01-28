@@ -31,8 +31,18 @@ public class CreateServer {
         }
     }
     
+    private static String joinPassword;
+    private static String serverFileName;
+    private static String serverDirectory;
+    private static List<String> whitelist;
+    private static List<String> blacklist;
+    private static int rateLimit;
+    private static int portNumber;
+    private static File unlockedFile;
+    
     //Access the Hash instance
     static Hash hash = CentralManager.getHash();
+    static HostServer hostServer = CentralManager.getHostServer();
     
     public static void createServer3(JFrame frame) {
         frame.getContentPane().removeAll();
@@ -65,6 +75,22 @@ public class CreateServer {
         botProtectionPanel.add(botYes);
         botProtectionPanel.add(botNo);
         frame.add(botProtectionPanel, gbc);
+
+        // Captcha Options (only visible when Bot Protection is YES)
+        gbc.gridy++;
+        gbc.gridwidth = 1;
+
+        gbc.gridx = 1;
+        JPanel captchaPanel = new JPanel(new FlowLayout());
+        JCheckBox mathCaptcha = new JCheckBox("Math");
+        JCheckBox wordsCaptcha = new JCheckBox("Words");
+        JCheckBox patternCaptcha = new JCheckBox("Pattern");
+
+        captchaPanel.add(mathCaptcha);
+        captchaPanel.add(wordsCaptcha);
+        captchaPanel.add(patternCaptcha);
+        captchaPanel.setVisible(false); // Initially hidden, will show when Bot Protection is YES
+        frame.add(captchaPanel, gbc);
 
         // Port Number
         gbc.gridy++;
@@ -154,6 +180,26 @@ public class CreateServer {
         encryptionOrderArea.setText(""); // Initially empty
         frame.add(new JScrollPane(encryptionOrderArea), gbc);
 
+        // Action listeners to update encryption order text area
+        ActionListener encryptionListener = e -> {
+            List<String> selectedEncryptionMethods = new ArrayList<>();
+            if (aesCheckbox.isSelected()) selectedEncryptionMethods.add("AES");
+            if (serpentCheckbox.isSelected()) selectedEncryptionMethods.add("Serpent");
+            if (twofishCheckbox.isSelected()) selectedEncryptionMethods.add("Twofish");
+            if (camelliaCheckbox.isSelected()) selectedEncryptionMethods.add("Camellia");
+            if (kuzCheckbox.isSelected()) selectedEncryptionMethods.add("Kuznyechik");
+
+            // Update the encryption order display
+            encryptionOrderArea.setText(String.join(", ", selectedEncryptionMethods)); // Show selected order in the text area
+        };
+
+        // Add action listeners to each checkbox
+        aesCheckbox.addActionListener(encryptionListener);
+        serpentCheckbox.addActionListener(encryptionListener);
+        twofishCheckbox.addActionListener(encryptionListener);
+        camelliaCheckbox.addActionListener(encryptionListener);
+        kuzCheckbox.addActionListener(encryptionListener);
+
         // Continue Button
         gbc.gridy++;
         gbc.gridx = 0;
@@ -162,10 +208,21 @@ public class CreateServer {
         frame.add(continueButton, gbc);
 
         // Action Listener for Continue
+     // Continue Button
+     // Continue Button
         continueButton.addActionListener(e -> {
-            String portNumber = portNumberField.getText();
+            String portNumberText = portNumberField.getText();
             String password = new String(passwordField.getPassword());
             String botProtection = botYes.isSelected() ? "YES" : "NO";
+
+            // Validate Bot Protection
+            if ("YES".equals(botProtection)) {
+                // Check if at least one captcha method is selected
+                if (!(mathCaptcha.isSelected() || wordsCaptcha.isSelected() || patternCaptcha.isSelected())) {
+                    JOptionPane.showMessageDialog(frame, "Please select a Captcha method.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return; // Stop execution if Captcha is not selected
+                }
+            }
 
             List<byte[]> keys = new ArrayList<>();
 
@@ -198,6 +255,35 @@ public class CreateServer {
             // Update the encryption order display area
             encryptionOrderArea.setText(String.join(", ", encryptionOrder)); // Show selected order in the text area
 
+            // Generate server key using cipherData.generateRandomKey(string)
+            String serverKey = cipherData.generateRandomKey();
+
+            // Hash the joinPassword before writing it to the file
+            String hashedJoinPassword = Base64.getEncoder().encodeToString(hash.hashSHA256(joinPassword)); // Hash the joinPassword and convert to Base64
+
+            // Get the formatted string to save to file
+            String formattedData = String.format("%s:%s:%s:%d:%s:%s",
+                    hashedJoinPassword, // Use hashed joinPassword here
+                    String.join(",", whitelist),
+                    String.join(",", blacklist),
+                    rateLimit,
+                    portNumberText,
+                    serverKey);
+
+            // Write the formatted data to a file
+            try {
+                String userHome = System.getProperty("user.home");
+                unlockedFile = new File(userHome, "server_configuration.txt"); // Adjust the filename as necessary
+                try (FileWriter writer = new FileWriter(unlockedFile)) {
+                    writer.write(formattedData);
+                }
+                JOptionPane.showMessageDialog(frame, "Configuration saved successfully:\n" + unlockedFile.getAbsolutePath(),
+                        "Success", JOptionPane.INFORMATION_MESSAGE);
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(frame, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                ex.printStackTrace();
+            }
+
             // Encrypt the concatenated string (plain text)
             try {
                 String concatenatedString = botProtection;
@@ -209,7 +295,6 @@ public class CreateServer {
 
                 // Define the output directory and filename (using server name)
                 String userHome = System.getProperty("user.home");
-                String serverFileName = "server_config"; // To Update
                 File encryptedFile = new File(userHome, serverFileName + "_encrypted.txt");
 
                 // Write the encrypted data to the file
@@ -219,6 +304,8 @@ public class CreateServer {
 
                 JOptionPane.showMessageDialog(frame, "File created and encrypted successfully:\n" + encryptedFile.getAbsolutePath(),
                         "Success", JOptionPane.INFORMATION_MESSAGE);
+                
+                hostServer.hostLiveServer(unlockedFile);
 
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(frame, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
@@ -226,12 +313,17 @@ public class CreateServer {
             }
         });
 
+        // Bot Protection checkbox event handler to toggle captcha panel visibility
+        botYes.addActionListener(e -> captchaPanel.setVisible(true));
+        botNo.addActionListener(e -> captchaPanel.setVisible(false));
+
         // Frame Settings
         frame.setTitle("Create Server");
         frame.setSize(700, 800);
     }
+
 	
-	public static void createServer2(JFrame frame) {
+    public static void createServer2(JFrame frame) {
         frame.getContentPane().removeAll();
 
         // Set the layout
@@ -263,7 +355,7 @@ public class CreateServer {
         gbc.gridx = 0;
         gbc.gridwidth = 2;
         JLabel whitelistInfoLabel = new JLabel(
-                "(if there is anything in there, it will assume all other addresses on the blacklist)",
+                "(if there is anything in there, it will assume all other addresses on the blacklist. To separate IP addresses, add a comma (,) for new IP address.)",
                 SwingConstants.CENTER);
         whitelistInfoLabel.setFont(new Font("Arial", Font.ITALIC, 12));
         frame.add(whitelistInfoLabel, gbc);
@@ -313,14 +405,18 @@ public class CreateServer {
         continueButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                String whitelist = whitelistField.getText();
-                String blacklist = blacklistField.getText();
-                String rateLimit = rateLimitField.getText();
+                String whitelistInput = whitelistField.getText();
+                String blacklistInput = blacklistField.getText();
+                String rateLimitInput = rateLimitField.getText();
 
-                // Validate input and process
+                // Save to respective static variables
+                whitelist = parseIpList(whitelistInput); // Save as list of IPs
+                blacklist = parseIpList(blacklistInput); // Save as list of IPs
+
                 try {
-                    int rateLimitValue = Integer.parseInt(rateLimit);
+                    rateLimit = Integer.parseInt(rateLimitInput); // Save rate limit as integer
 
+                    // Proceed to next step
                     createServer3(frame);
 
                 } catch (NumberFormatException ex) {
@@ -334,107 +430,127 @@ public class CreateServer {
         frame.setTitle("Create Server");
         frame.setSize(800, 500);
     }
+
+    // Helper method to parse IP addresses from a comma-separated string
+    private static List<String> parseIpList(String input) {
+        List<String> ipList = new ArrayList<>();
+        if (input != null && !input.trim().isEmpty()) {
+            String[] ips = input.split(",");
+            for (String ip : ips) {
+                ipList.add(ip.trim());
+            }
+        }
+        return ipList;
+    }
 	
 	public static void createServer1(JFrame frame) {
-        // Set the layout
-        frame.getContentPane().removeAll();
-        frame.setLayout(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(10, 10, 10, 10); // Add padding
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.gridx = 0;
-        gbc.gridy = 0;
 
-        // Title Label
-        JLabel titleLabel = new JLabel("Create A Server", SwingConstants.CENTER);
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
-        gbc.gridwidth = 2;
-        frame.add(titleLabel, gbc);
+	    // Set the layout
+	    frame.getContentPane().removeAll();
+	    frame.setLayout(new GridBagLayout());
+	    GridBagConstraints gbc = new GridBagConstraints();
+	    gbc.insets = new Insets(10, 10, 10, 10); // Add padding
+	    gbc.fill = GridBagConstraints.HORIZONTAL;
+	    gbc.gridx = 0;
+	    gbc.gridy = 0;
 
-        // Join Password
-        gbc.gridy++;
-        gbc.gridwidth = 1;
-        JLabel passwordLabel = new JLabel("Join Password:");
-        frame.add(passwordLabel, gbc);
+	    // Title Label
+	    JLabel titleLabel = new JLabel("Create A Server", SwingConstants.CENTER);
+	    titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
+	    gbc.gridwidth = 2;
+	    frame.add(titleLabel, gbc);
 
-        gbc.gridx = 1;
-        JPasswordField passwordField = new JPasswordField();
-        frame.add(passwordField, gbc);
+	    // Join Password
+	    gbc.gridy++;
+	    gbc.gridwidth = 1;
+	    JLabel passwordLabel = new JLabel("Join Password:");
+	    frame.add(passwordLabel, gbc);
 
-        // Info Label
-        gbc.gridy++;
-        gbc.gridx = 0;
-        gbc.gridwidth = 2;
-        JLabel infoLabel = new JLabel("(you may leave this blank if you want to)", SwingConstants.CENTER);
-        infoLabel.setFont(new Font("Arial", Font.ITALIC, 12));
-        frame.add(infoLabel, gbc);
+	    gbc.gridx = 1;
+	    JPasswordField passwordField = new JPasswordField();
+	    frame.add(passwordField, gbc);
 
-        // Server File Name
-        gbc.gridy++;
-        gbc.gridwidth = 1;
-        gbc.gridx = 0;
-        JLabel fileNameLabel = new JLabel("Server File Name:");
-        frame.add(fileNameLabel, gbc);
+	    // Info Label
+	    gbc.gridy++;
+	    gbc.gridx = 0;
+	    gbc.gridwidth = 2;
+	    JLabel infoLabel = new JLabel("(you may leave this blank if you want to)", SwingConstants.CENTER);
+	    infoLabel.setFont(new Font("Arial", Font.ITALIC, 12));
+	    frame.add(infoLabel, gbc);
 
-        gbc.gridx = 1;
-        JTextField fileNameField = new JTextField();
-        frame.add(fileNameField, gbc);
+	    // Server File Name
+	    gbc.gridy++;
+	    gbc.gridwidth = 1;
+	    gbc.gridx = 0;
+	    JLabel fileNameLabel = new JLabel("Server File Name:");
+	    frame.add(fileNameLabel, gbc);
 
-        // Server File Directory
-        gbc.gridy++;
-        gbc.gridx = 0;
-        JLabel fileDirectoryLabel = new JLabel("Server File Directory:");
-        frame.add(fileDirectoryLabel, gbc);
+	    gbc.gridx = 1;
+	    JTextField fileNameField = new JTextField();
+	    frame.add(fileNameField, gbc);
 
-        gbc.gridx = 1;
-        JPanel directoryPanel = new JPanel(new BorderLayout());
-        JTextField directoryField = new JTextField("Default");
-        JButton browseButton = new JButton(new ImageIcon("path/to/icon.png")); // Add your icon path
-        browseButton.setToolTipText("Browse Directory");
+	    // Server File Directory
+	    gbc.gridy++;
+	    gbc.gridx = 0;
+	    JLabel fileDirectoryLabel = new JLabel("Server File Directory:");
+	    frame.add(fileDirectoryLabel, gbc);
 
-        directoryPanel.add(directoryField, BorderLayout.CENTER);
-        directoryPanel.add(browseButton, BorderLayout.EAST);
-        frame.add(directoryPanel, gbc);
+	    gbc.gridx = 1;
+	    JPanel directoryPanel = new JPanel(new BorderLayout());
+	    JTextField directoryField = new JTextField("Default");
+	    JButton browseButton = new JButton(new ImageIcon("path/to/icon.png")); // Add your icon path
+	    browseButton.setToolTipText("Browse Directory");
 
-        // Continue Button
-        gbc.gridy++;
-        gbc.gridx = 0;
-        gbc.gridwidth = 2;
-        JButton continueButton = new JButton("Continue");
-        frame.add(continueButton, gbc);
+	    directoryPanel.add(directoryField, BorderLayout.CENTER);
+	    directoryPanel.add(browseButton, BorderLayout.EAST);
+	    frame.add(directoryPanel, gbc);
 
-        // Add ActionListener for Browse Button
-        browseButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                JFileChooser fileChooser = new JFileChooser();
-                fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-                int option = fileChooser.showOpenDialog(frame);
-                if (option == JFileChooser.APPROVE_OPTION) {
-                    directoryField.setText(fileChooser.getSelectedFile().getAbsolutePath());
-                }
-            }
-        });
+	    // Continue Button
+	    gbc.gridy++;
+	    gbc.gridx = 0;
+	    gbc.gridwidth = 2;
+	    JButton continueButton = new JButton("Continue");
+	    frame.add(continueButton, gbc);
 
-        // Add ActionListener for Continue Button
-        continueButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                String password = new String(passwordField.getPassword());
-                String fileName = fileNameField.getText();
-                String directory = directoryField.getText();
+	    // Add ActionListener for Browse Button
+	    browseButton.addActionListener(new ActionListener() {
+	        @Override
+	        public void actionPerformed(ActionEvent e) {
+	            JFileChooser fileChooser = new JFileChooser();
+	            fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+	            int option = fileChooser.showOpenDialog(frame);
+	            if (option == JFileChooser.APPROVE_OPTION) {
+	                directoryField.setText(fileChooser.getSelectedFile().getAbsolutePath());
+	            }
+	        }
+	    });
 
-                // Validate input and process
-                if (fileName.isEmpty()) {
-                    JOptionPane.showMessageDialog(frame, "Please enter a server file name.", "Error", JOptionPane.ERROR_MESSAGE);
-                } else {
-                    createServer2(frame);
-                }
-            }
-        });
+	    // Add ActionListener for Continue Button
+	    continueButton.addActionListener(new ActionListener() {
+	        @Override
+	        public void actionPerformed(ActionEvent e) {
+	            // Get values from the fields
+	            String password = new String(passwordField.getPassword());
+	            String fileName = fileNameField.getText();
+	            String directory = directoryField.getText();
 
-        // Set the frame properties
-        frame.setTitle("Create Server");
-        frame.setSize(400, 400);
-    }
+	            joinPassword = password;
+	            serverFileName = fileName;
+	            serverDirectory = directory;
+
+	            // Validate input and process
+	            if (fileName.isEmpty()) {
+	                JOptionPane.showMessageDialog(frame, "Please enter a server file name.", "Error", JOptionPane.ERROR_MESSAGE);
+	            } else {
+	                // You can now pass serverDetails to the next step or process it
+	                createServer2(frame);  // Assuming createServer2 method accepts the saved data
+	            }
+	        }
+	    });
+
+	    // Set the frame properties
+	    frame.setTitle("Create Server");
+	    frame.setSize(400, 400);
+	}
+
 }

@@ -3,6 +3,16 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.Arrays;
+import java.util.List;
+import java.util.ArrayList;
+
 
 public class HostServer {
     private JComboBox<String> serverDropdown;
@@ -14,7 +24,131 @@ public class HostServer {
     static App app = CentralManager.getApp();
     
     static CreateServer createServer = CentralManager.getCreateServer();
- 
+
+    private static int portNumber;
+    private static String serverFileName;
+    private static String joinPassword;
+    private static List<String> whitelist;
+    private static List<String> blacklist;
+    private static int rateLimit;
+    private static String serverKey;
+
+    public static void hostLiveServer(File decryptedFile) {
+        // Step 1: Read and decrypt the file (assuming it's already decrypted)
+        String fileContents = decryptServerFile(decryptedFile);
+
+        // Step 2: Extract values from the decrypted content
+        if (fileContents != null) {
+            parseServerConfig(fileContents);
+        } else {
+            JOptionPane.showMessageDialog(null, "Error decrypting the server file.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Step 3: Create the new JFrame for server hosting status
+        JFrame hostingFrame = new JFrame("Server Hosting Status");
+        hostingFrame.setLayout(new BoxLayout(hostingFrame.getContentPane(), BoxLayout.Y_AXIS));
+
+        // Server Name and Port Label
+        JLabel serverNameLabel = new JLabel("Server Name: " + serverFileName);
+        JLabel portLabel = new JLabel("Port: " + portNumber);
+
+        // Settings Button
+        JButton settingsButton = new JButton("Server Settings");
+        settingsButton.addActionListener(e -> {
+            // Optionally open server settings UI here
+            JOptionPane.showMessageDialog(hostingFrame, "Settings button clicked.", "Settings", JOptionPane.INFORMATION_MESSAGE);
+        });
+
+        // Close Button
+        JButton closeButton = new JButton("Close");
+        closeButton.addActionListener(e -> {
+            hostingFrame.dispose(); // Close the hosting UI when clicked
+            // Optionally shutdown the server or perform cleanup
+        });
+
+        hostingFrame.add(serverNameLabel);
+        hostingFrame.add(portLabel);
+        hostingFrame.add(settingsButton);
+        hostingFrame.add(closeButton);
+
+        hostingFrame.setSize(400, 300);
+        hostingFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        hostingFrame.setVisible(true);
+
+        // Now we will open the server socket and listen for connections
+        openServerSocket();
+    }
+
+    // Helper method to decrypt the server configuration file
+    private static String decryptServerFile(File decryptedFile) {
+        try {
+            // Assuming a simple read of the decrypted content from the file
+            // In practice, you may need to apply your decryption logic here
+            StringBuilder fileContentBuilder = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new FileReader(decryptedFile))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    fileContentBuilder.append(line);
+                }
+            }
+            return fileContentBuilder.toString();
+        } catch (IOException ex) {
+            System.err.println("Error reading decrypted file: " + ex.getMessage());
+            return null;
+        }
+    }
+
+    // Helper method to parse the decrypted content and extract the relevant details
+    private static void parseServerConfig(String config) {
+        // Split the config by ':' to get each value
+        String[] parts = config.split(":");
+        
+        if (parts.length == 6) {
+            try {
+                // Extract and parse the fields
+                joinPassword = parts[0]; // Decrypted join password
+                whitelist = Arrays.asList(parts[1].split(","));
+                blacklist = Arrays.asList(parts[2].split(","));
+                rateLimit = Integer.parseInt(parts[3]);
+                portNumber = Integer.parseInt(parts[4]);
+                serverKey = parts[5]; // Server key
+            } catch (NumberFormatException ex) {
+                System.err.println("Error parsing configuration: " + ex.getMessage());
+            }
+        } else {
+            System.err.println("Invalid server configuration format.");
+        }
+    }
+
+    // Method to open the server socket and handle connections
+    public static void openServerSocket() {
+        try (ServerSocket serverSocket = new ServerSocket(portNumber)) {
+            System.out.println("Server started on port " + portNumber);
+            while (true) {
+                // Wait for a client connection
+                Socket clientSocket = serverSocket.accept();
+                System.out.println("Client connected: " + clientSocket.getInetAddress().getHostAddress());
+
+                // Ping the client
+                pingClient(clientSocket);
+            }
+        } catch (IOException ex) {
+            System.err.println("Error starting the server: " + ex.getMessage());
+        }
+    }
+
+    // Method to send a ping to the client
+    public static void pingClient(Socket clientSocket) {
+        try {
+            OutputStream out = clientSocket.getOutputStream();
+            out.write("PING".getBytes()); // Send a simple PING message to the client
+            System.out.println("Ping sent to client at " + clientSocket.getInetAddress().getHostAddress());
+        } catch (IOException ex) {
+            System.err.println("Error pinging the client: " + ex.getMessage());
+        }
+    }
+    
     public void hostServer(JFrame frame) {
     	frame.getContentPane().removeAll();
         frame.setSize(600, 400);
